@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from 'react';
 import { 
   ReactFlow, 
@@ -31,7 +30,6 @@ interface WorkflowEditorProps {
   onCancel: () => void;
 }
 
-// Available event types for adding to the workflow
 const eventTypes = [
   { id: 'page_view', name: 'Page View', description: 'Triggered when a user views a page' },
   { id: 'button_click', name: 'Button Click', description: 'Triggered when a user clicks a button' },
@@ -40,7 +38,6 @@ const eventTypes = [
   { id: 'scroll_depth', name: 'Scroll Depth', description: 'Triggered when a user scrolls to a specific depth' },
 ];
 
-// Available action types for adding to the workflow
 const actionTypes = [
   { id: 'show_message', name: 'Show Message', description: 'Display a message to the user' },
   { id: 'redirect', name: 'Redirect', description: 'Redirect the user to another URL' },
@@ -49,7 +46,6 @@ const actionTypes = [
   { id: 'wait', name: 'Wait', description: 'Wait for a specific amount of time' },
 ];
 
-// Default nodes for a new workflow
 const getInitialNodes = () => [
   {
     id: 'start',
@@ -75,7 +71,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [panelExpanded, setPanelExpanded] = useState(true);
   
-  // Check if workflow has nodes, if not use initial nodes
   const initialNodes = workflow.nodes && workflow.nodes.length > 0 
     ? workflow.nodes 
     : getInitialNodes();
@@ -85,14 +80,11 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   
-  // Handle node selection
   const onNodeClick = useCallback((_, node) => {
     setSelectedNodeId(node.id);
   }, []);
   
-  // Handle edge connection
   const onConnect = useCallback((params) => {
-    // Create a new edge with a unique ID
     const newEdge = {
       ...params,
       id: `e${params.source}-${params.target}`,
@@ -105,7 +97,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
     setEdges((eds) => addEdge(newEdge, eds));
   }, [setEdges]);
   
-  // Handle adding a new node to the workflow
   const addNode = (nodeType: 'event' | 'action', typeId: string) => {
     const typeName = nodeType === 'event' 
       ? eventTypes.find(et => et.id === typeId)?.name 
@@ -115,7 +106,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
       ? eventTypes.find(et => et.id === typeId)?.description 
       : actionTypes.find(at => at.id === typeId)?.description;
       
-    // Calculate position: place new node below the selected node or at a default position
     let posX = 250;
     let posY = 150;
     
@@ -126,7 +116,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
         posY = selectedNode.position.y + 150;
       }
     } else {
-      // If no node is selected, position it below the last node
       if (nodes.length > 0) {
         const maxY = Math.max(...nodes.map(node => node.position.y));
         posY = maxY + 150;
@@ -148,7 +137,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
     setNodes(nodes => [...nodes, newNode]);
     setSelectedNodeId(newNode.id);
     
-    // If a node was selected, create an edge from it to the new node
     if (selectedNodeId) {
       const newEdge = {
         id: `e${selectedNodeId}-${newNode.id}`,
@@ -163,7 +151,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
     }
   };
   
-  // Handle saving the workflow
   const handleSave = () => {
     const updatedWorkflow = {
       ...workflow,
@@ -176,7 +163,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
     onSave(updatedWorkflow);
   };
   
-  // Handle updating node properties
   const updateNodeProperties = (nodeId: string, properties: any) => {
     setNodes(nodes.map(node => {
       if (node.id === nodeId) {
@@ -195,7 +181,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
     }));
   };
   
-  // The currently selected node
   const selectedNode = selectedNodeId ? nodes.find(node => node.id === selectedNodeId) : null;
   
   return (
@@ -220,7 +205,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
       </div>
       
       <div className="flex-1 flex">
-        {/* Workflow canvas */}
         <div className="flex-1 h-full">
           <ReactFlow
             nodes={nodes}
@@ -250,7 +234,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onSave, onCan
           </ReactFlow>
         </div>
         
-        {/* Configuration panel */}
         <div className={`border-l w-96 transition-all duration-300 flex flex-col ${panelExpanded ? '' : 'w-12'}`}>
           <div className="border-b p-3 flex justify-between items-center bg-muted/50">
             <h3 className={`font-medium ${panelExpanded ? '' : 'hidden'}`}>Workflow Configuration</h3>

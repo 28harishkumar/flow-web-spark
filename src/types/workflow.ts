@@ -1,4 +1,6 @@
 
+import { MarkerType } from '@xyflow/react';
+
 interface Node {
   id: string;
   type: string;
@@ -21,7 +23,7 @@ interface Edge {
   type?: string;
   animated?: boolean;
   markerEnd?: {
-    type: string;
+    type: MarkerType;
   };
 }
 

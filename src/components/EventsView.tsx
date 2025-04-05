@@ -1,56 +1,143 @@
-
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { CalendarIcon, SearchIcon } from 'lucide-react';
+import { CalendarIcon, SearchIcon } from "lucide-react";
+import { UserEventsService, UserEvent } from "@/services/userEvents";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/AuthContext";
 
-// Mock data for events
-const mockEvents = [
-  { id: '1', type: 'page_view', url: '/home', userId: 'user123', timestamp: '2025-04-04T12:15:00Z' },
-  { id: '2', type: 'button_click', element: 'signup-button', userId: 'user456', timestamp: '2025-04-04T11:30:00Z' },
-  { id: '3', type: 'form_submit', formId: 'contact-form', userId: 'user789', timestamp: '2025-04-04T10:45:00Z' },
-  { id: '4', type: 'page_view', url: '/pricing', userId: 'user123', timestamp: '2025-04-04T09:20:00Z' },
-  { id: '5', type: 'custom', name: 'product_view', productId: 'prod123', userId: 'user456', timestamp: '2025-04-04T08:10:00Z' },
-];
+interface EventsViewProps {
+  externalId: string;
+}
 
 const EventsView: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [events, setEvents] = useState<UserEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [eventType, setEventType] = useState("all");
+  const [eventTypes, setEventTypes] = useState<string[]>([]);
+  const userEventsService = new UserEventsService();
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const [userEvents, types] = await Promise.all([
+          userEventsService.getUserEvents(currentUser?.id),
+          userEventsService.getEventTypes(),
+        ]);
+        setEvents(userEvents);
+        setEventTypes(types);
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [currentUser?.id]);
+
+  const filteredEvents = events.filter((event) => {
+    const matchesSearch =
+      event.event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      JSON.stringify(event.event_data)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+    const matchesType = eventType === "all" || event.event_type === eventType;
+    return matchesSearch && matchesType;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-1/2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-1/4" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Events Today</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Events
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,284</div>
-            <p className="text-xs text-muted-foreground mt-1">+12.5% from yesterday</p>
+            <div className="text-2xl font-bold">{events.length}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unique Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Unique Event Types
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">356</div>
-            <p className="text-xs text-muted-foreground mt-1">+4.3% from yesterday</p>
+            <div className="text-2xl font-bold">{eventTypes.length}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Workflow Triggers</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Filtered Events
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">48</div>
-            <p className="text-xs text-muted-foreground mt-1">+15.8% from yesterday</p>
+            <div className="text-2xl font-bold">{filteredEvents.length}</div>
           </CardContent>
         </Card>
       </div>
-      
+
       <Card>
         <CardHeader>
           <div className="flex flex-col space-y-2 md:flex-row md:justify-between md:space-y-0 md:space-x-2">
@@ -61,22 +148,27 @@ const EventsView: React.FC = () => {
             <div className="flex items-center space-x-2">
               <div className="relative w-full md:w-64">
                 <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="search" 
-                  placeholder="Search events..." 
-                  className="pl-8" 
+                <Input
+                  type="search"
+                  placeholder="Search events..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Select defaultValue="all">
+              <Select value={eventType} onValueChange={setEventType}>
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Event Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="page_view">Page View</SelectItem>
-                  <SelectItem value="button_click">Button Click</SelectItem>
-                  <SelectItem value="form_submit">Form Submit</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                  {eventTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <div className="flex items-center space-x-2">
@@ -97,28 +189,21 @@ const EventsView: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockEvents.map((event) => (
+              {filteredEvents.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell>
-                    <Badge variant={
-                      event.type === 'page_view' ? 'outline' :
-                      event.type === 'button_click' ? 'secondary' :
-                      event.type === 'form_submit' ? 'default' : 'destructive'
-                    }>
-                      {event.type}
-                    </Badge>
+                    <Badge variant="outline">{event.event_type}</Badge>
                   </TableCell>
                   <TableCell>
-                    {event.type === 'page_view' && `URL: ${event.url}`}
-                    {event.type === 'button_click' && `Element: ${event.element}`}
-                    {event.type === 'form_submit' && `Form: ${event.formId}`}
-                    {event.type === 'custom' && `${event.name}: ${event.productId}`}
+                    <pre className="text-xs whitespace-pre-wrap">
+                      {JSON.stringify(event.event_data, null, 2)}
+                    </pre>
                   </TableCell>
-                  <TableCell>{event.userId}</TableCell>
+                  <TableCell>{currentUser?.id}</TableCell>
                   <TableCell>
-                    {new Date(event.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
+                    {new Date(event.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </TableCell>
                 </TableRow>

@@ -12,7 +12,9 @@ export class ApiService {
 
   constructor() {
     const token = localStorage.getItem("user_token");
-    this.mockEnabled = import.meta.env.VITE_APP_MOCK_ENABLED === "true";
+    const isLocalhost = window.location.origin.startsWith("http://localhost");
+    this.mockEnabled =
+      !isLocalhost || import.meta.env.VITE_APP_MOCK_ENABLED === "true";
     this.client = axios.create({
       baseURL: import.meta.env.VITE_APP_API_URL || "http://localhost:8000/api/",
       headers: {

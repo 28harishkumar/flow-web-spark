@@ -1,6 +1,13 @@
 import { mockWorkflows } from "@/mock/workflow";
 import { ApiService } from "./api";
-import { JsonWorkflow } from "@/types/workflow";
+import {
+  ActionType,
+  EventType,
+  JsonWorkflow,
+  TemplateListType,
+  WebAction,
+  WebEvent,
+} from "@/types/workflow";
 
 export class WorkflowService extends ApiService {
   private mockData: { workflows: JsonWorkflow[] };
@@ -79,5 +86,79 @@ export class WorkflowService extends ApiService {
     }
 
     return this.request<{ success: boolean }>("DELETE", `/workflow/${id}/`);
+  }
+
+  async getEventTypes(): Promise<EventType[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.request<any[]>("GET", "/user-events/events/list/").then((res) =>
+      res.map((event) => ({
+        id: event.id,
+        name: event.event_type,
+        description: event.event_data?.type,
+      }))
+    );
+  }
+
+  async getActionTypes(): Promise<ActionType[]> {
+    return this.request<ActionType[]>("GET", "/workflow/actions/");
+  }
+
+  async getTemplates(): Promise<TemplateListType[]> {
+    return this.request<TemplateListType[]>("GET", "/messages/templates/");
+  }
+
+  async addEvent(event: WebEvent, workflowId: string): Promise<WebEvent> {
+    return this.request<WebEvent>(
+      "POST",
+      `/workflow/${workflowId}/events/`,
+      event
+    );
+  }
+
+  async updateEvent(
+    event: WebEvent,
+    workflowId: string,
+    eventId: string
+  ): Promise<WebEvent> {
+    return this.request<WebEvent>(
+      "PUT",
+      `/workflow/${workflowId}/events/${eventId}/`,
+      event
+    );
+  }
+
+  async addAction(
+    action: Omit<WebAction, "id" | "created_at" | "updated_at">,
+    eventId: string,
+    workflowId: string
+  ): Promise<WebAction> {
+    return this.request<WebAction>(
+      "POST",
+      `/workflow/${workflowId}/events/${eventId}/actions/`,
+      action
+    );
+  }
+
+  async updateAction(
+    action: WebAction,
+    eventId: string,
+    workflowId: string
+  ): Promise<WebAction> {
+    return this.request<WebAction>(
+      "PUT",
+      `/workflow/${workflowId}/events/${eventId}/actions/${action.id}/`,
+      action
+    );
+  }
+
+  async deleteAction(
+    actionId: string,
+    eventId: string,
+    workflowId: string
+  ): Promise<WebAction> {
+    return this.request<WebAction>(
+      "DELETE",
+      `/workflow/${workflowId}/events/${eventId}/actions/${actionId}/`
+    );
   }
 }

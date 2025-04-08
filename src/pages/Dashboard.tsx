@@ -13,6 +13,7 @@ import { WebMessagingService } from "@/services/webMessaging";
 import { useAuth } from "@/context/AuthContext";
 import { JsonWorkflow } from "@/types/workflow";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const Dashboard: React.FC = () => {
   const { currentUser: user, logout: onLogout } = useAuth();
@@ -25,7 +26,7 @@ const Dashboard: React.FC = () => {
 
   const handleCreateWorkflow = () => {
     const newWorkflow: JsonWorkflow = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       name: "New Workflow",
       description: "Workflow description",
       events: [],
@@ -34,7 +35,11 @@ const Dashboard: React.FC = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    navigateToEditor(newWorkflow.id.toString());
+
+    //navigateToEditor(newWorkflow.id.toString());
+    workflowService.createWorkflow(newWorkflow).then((workflow) => {
+      navigateToEditor(workflow.id);
+    });
   };
 
   return (

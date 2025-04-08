@@ -5,7 +5,10 @@ import {
   WebEvent,
   Node,
   Edge,
+  EventCategory,
 } from "@/types/workflow";
+import { MarkerType } from "@xyflow/react";
+import { isValidUUID } from "./utils";
 
 const xGap = 200;
 const yGap = 150;
@@ -36,8 +39,9 @@ export const setSubordinates = (event: WebEvent): WebEvent => {
 
 export const serializerEvents = (
   event: WebEvent,
-  x: number,
-  y: number
+  x = 0,
+  y = 0,
+  withChildren = false
 ): Node[] => {
   const nodes: Node[] = [
     {
@@ -49,40 +53,47 @@ export const serializerEvents = (
         description: event.description,
         type: event.event_type,
         properties: {
+          event_type: event.event_type,
           category: event.category,
-          partner_id: event.partner_id,
+          parent_id: event.parent_id,
+          parent: event.parent,
           actions: event.actions?.map((action) => action.id),
         },
       },
     },
   ];
 
-  event.children?.forEach((child, index) => {
-    nodes.push(
-      ...serializerEvents(
-        child,
-        x + xGap,
-        y + yGap + index > 0
-          ? yGap * ((event.children?.[index - 1]?.subordinates ?? 0) + 1)
-          : 0
-      )
-    );
-  });
+  if (withChildren) {
+    event.children?.forEach((child, index) => {
+      nodes.push(
+        ...serializerEvents(
+          child,
+          x + xGap,
+          y + yGap + index > 0
+            ? yGap * ((event.children?.[index - 1]?.subordinates ?? 0) + 1)
+            : 0
+        )
+      );
+    });
+  }
 
   return nodes;
 };
 
 export const serializerActions = (
   event: WebEvent,
-  actions: WebAction[]
+  actions: WebAction[],
+  withChildren = false
 ): WebAction[] => {
   event.actions?.forEach((action) => {
     actions.push(action);
   });
 
-  event.children?.forEach((child) => {
-    serializerActions(child, actions);
-  });
+  if (withChildren) {
+    event.children?.forEach((child) => {
+      serializerActions(child, actions);
+    });
+  }
 
   return actions;
 };
@@ -95,11 +106,24 @@ export const jsonToCanvasWorkflow = (
   const actions: WebAction[] = [];
 
   jsonWorkflow.events.forEach((event) => {
-    nodes.push(...serializerEvents(setSubordinates(event), 0, 0));
+    nodes.push(...serializerEvents(event));
+
+    if (event.parent_id) {
+      edges.push({
+        id: `${event.id}-${event.parent_id}`,
+        source: event.parent_id,
+        target: event.id,
+        type: "smoothstep",
+        animated: false,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+      });
+    }
   });
 
   jsonWorkflow.events.forEach((event) => {
-    actions.push(...serializerActions(event, actions));
+    serializerActions(event, actions);
   });
 
   return {
@@ -140,7 +164,7 @@ export const canvasToJsonWorkflow = (
       description: node.data.description,
       category: node.data.properties.category,
       event_type: node.type || node.data.type,
-      partner_id: node.data.properties.partner_id,
+      parent_id: node.data.properties.parent_id,
       children: children.length > 0 ? children : undefined,
       actions: actions.length > 0 ? actions : undefined,
       created_at: node.data.properties.created_at || canvasWorkflow.created_at,
@@ -173,4 +197,41 @@ export const canvasToJsonWorkflow = (
     created_at: canvasWorkflow.created_at,
     updated_at: canvasWorkflow.updated_at,
   };
+};
+
+export const canvasToJsonNode = (
+  node: Node,
+  edges: Edge[],
+  actions: WebAction[]
+): WebEvent => {
+  const parent = edges.find((edge) => edge.target === node.id);
+  const nodeActions = actions
+    .filter((action) => node.data.properties.actions?.includes(action.id))
+    .map((action) => ({
+      ...action,
+      id: isValidUUID(action.id) ? action.id : undefined,
+    }));
+
+  return {
+    id: isValidUUID(node.id) ? node.id : undefined,
+    name: node.data.label,
+    description: node.data.description,
+    event_type: node.data.type || node.type,
+    parent_id: parent?.source || node.data.properties.parent_id || null,
+    actions: nodeActions,
+    created_at: node.data.properties.created_at,
+    updated_at: node.data.properties.updated_at,
+    position_x: node.position?.x,
+    position_y: node.position?.y,
+    category: node.data.properties.category || ("web" as EventCategory),
+  };
+};
+
+export const canvasToJsonNodes = (
+  nodes: Node[],
+  edges: Edge[],
+  actions
+): WebEvent[] => {
+  console.log(nodes, edges, actions);
+  return nodes.map((node) => canvasToJsonNode(node, edges, actions));
 };

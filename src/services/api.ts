@@ -20,7 +20,7 @@ export class ApiService {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `Token ${token}`,
+        Authorization: token ? `Token ${token}` : undefined,
       },
     });
 

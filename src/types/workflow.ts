@@ -96,13 +96,15 @@ export interface WebAction {
   updated_at: string;
 }
 
+export type EventCategory = "web" | "mobile";
+
 export interface WebEvent {
   id: string;
   name: string;
   description?: string;
-  category: "web" | "mobile";
+  category: EventCategory;
   event_type: string;
-  partner_id?: string;
+  parent_id?: string;
   parent?: WebEvent;
   children?: WebEvent[];
   subordinates?: number;
@@ -120,6 +122,7 @@ export interface JsonWorkflow {
   live_status: boolean;
   is_active: boolean;
   events: WebEvent[];
+  actions?: WebAction[];
   created_at: string;
   updated_at: string;
 }
@@ -133,4 +136,40 @@ export interface CanvasWorkflow {
   actions?: WebAction[];
   created_at?: string;
   updated_at?: string;
+}
+
+export interface EventType {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface ActionType {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface TemplateListType {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface WebTemplate {
+  id: string;
+  title: string;
+  message: string;
+  message_type: "info" | "warning" | "success" | "error";
+  display_duration: number;
+  template_name: string;
+  template_config: TemplateConfig;
+  position:
+    | "top-right"
+    | "top-left"
+    | "bottom-right"
+    | "bottom-left"
+    | "center";
+  theme: "light" | "dark" | "custom";
+  custom_theme: ThemeConfig;
 }

@@ -10,6 +10,7 @@ import {
   addEdge,
   MarkerType,
   NodeTypes,
+  NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -28,66 +29,26 @@ import {
 import { ArrowLeft, Save, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import EventNode from "../components/flow/EventNode";
 import ActionNode from "../components/flow/ActionNode";
-import { CanvasWorkflow, JsonWorkflow } from "@/types/workflow";
+import {
+  CanvasWorkflow,
+  Edge,
+  JsonWorkflow,
+  TemplateListType,
+  WebAction,
+  WebEvent,
+  WebTemplate,
+} from "@/types/workflow";
 import { WorkflowService } from "@/services/workflow";
 import { useNavigate, useParams } from "react-router-dom";
-import { canvasToJsonWorkflow, jsonToCanvasWorkflow } from "@/lib/workflow";
+import {
+  canvasToJsonNode,
+  canvasToJsonNodes,
+  canvasToJsonWorkflow,
+  jsonToCanvasWorkflow,
+  serializerEvents,
+} from "@/lib/workflow";
 
-const eventTypes = [
-  {
-    id: "page_view",
-    name: "Page View",
-    description: "Triggered when a user views a page",
-  },
-  {
-    id: "button_click",
-    name: "Button Click",
-    description: "Triggered when a user clicks a button",
-  },
-  {
-    id: "form_submit",
-    name: "Form Submit",
-    description: "Triggered when a user submits a form",
-  },
-  {
-    id: "time_spent",
-    name: "Time Spent",
-    description: "Triggered after a user spends X time on a page",
-  },
-  {
-    id: "scroll_depth",
-    name: "Scroll Depth",
-    description: "Triggered when a user scrolls to a specific depth",
-  },
-];
-
-const actionTypes = [
-  {
-    id: "show_message",
-    name: "Show Message",
-    description: "Display a message to the user",
-  },
-  {
-    id: "redirect",
-    name: "Redirect",
-    description: "Redirect the user to another URL",
-  },
-  {
-    id: "tag_user",
-    name: "Tag User",
-    description: "Add a tag to the user profile",
-  },
-  {
-    id: "webhook",
-    name: "Webhook",
-    description: "Trigger an external webhook",
-  },
-  {
-    id: "wait",
-    name: "Wait",
-    description: "Wait for a specific amount of time",
-  },
-];
+import { EventType, ActionType } from "@/types/workflow";
 
 const getInitialNodes = () => [
   {
@@ -123,7 +84,6 @@ const WorkflowEditor: React.FC = () => {
     workflow.description || ""
   );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [panelExpanded, setPanelExpanded] = useState(true);
 
   const initialNodes =
     workflow.nodes && workflow.nodes.length > 0
@@ -134,25 +94,54 @@ const WorkflowEditor: React.FC = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
+  const [actions, setActions] = useState<WebAction[]>([]);
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
+  const [actionTypes, setActionTypes] = useState<ActionType[]>([]);
+  const [templates, setTemplates] = useState<TemplateListType[]>([]);
+  const [selectedActions, setSelectedActions] = useState<WebAction[]>([]);
   const workflowService = new WorkflowService();
   const navigate = useNavigate();
 
-  const onNodeClick = useCallback((_, node) => {
-    setSelectedNodeId(node.id);
-  }, []);
+  const onNodeClick = useCallback(
+    (_, node) => {
+      setSelectedNodeId(node.id);
+      setSelectedActions(
+        actions.filter((a) => node.data.properties.actions?.includes(a.id))
+      );
+    },
+    [actions]
+  );
 
   useEffect(() => {
     if (workflowId) {
       workflowService.getWorkflow(workflowId).then((workflow) => {
-        setWorkflow(jsonToCanvasWorkflow(workflow));
+        const canvasWorkflow = jsonToCanvasWorkflow(workflow);
+        console.log(canvasWorkflow);
+        setWorkflow(canvasWorkflow);
+        setNodes(canvasWorkflow.nodes);
+        setEdges(canvasWorkflow.edges);
+        setActions(canvasWorkflow.actions);
+        setWorkflowName(workflow.name);
+        setWorkflowDescription(workflow.description);
+      });
+
+      workflowService.getEventTypes().then((eventTypes) => {
+        setEventTypes(eventTypes);
+      });
+
+      workflowService.getActionTypes().then((actionTypes) => {
+        setActionTypes(actionTypes);
+      });
+
+      workflowService.getTemplates().then((templates) => {
+        setTemplates(templates);
       });
     }
   }, [workflowId]);
 
   const onConnect = useCallback(
     (params) => {
-      const newEdge = {
+      const newEdge: Edge = {
         ...params,
         id: `e${params.source}-${params.target}`,
         type: "smoothstep",
@@ -161,7 +150,25 @@ const WorkflowEditor: React.FC = () => {
           type: MarkerType.ArrowClosed,
         },
       };
-      setEdges((eds) => addEdge(newEdge, eds));
+
+      console.log("newEdge", newEdge, nodes);
+
+      const node = nodes.find((node) => node.id === params.target);
+
+      if (node) {
+        const event = canvasToJsonNode(node, edges, actions);
+
+        if (node && event.parent_id !== params.source) {
+          event.parent_id = params.source;
+          workflowService.updateEvent(event, workflowId, node.id).then((ev) => {
+            setNodes((nodes) => [
+              ...nodes.filter((n) => n.id !== ev.id),
+              serializerEvents(ev)[0],
+            ]);
+            setEdges((eds) => addEdge({ ...newEdge, target: ev.id }, eds));
+          });
+        }
+      }
     },
     [setEdges]
   );
@@ -205,43 +212,53 @@ const WorkflowEditor: React.FC = () => {
       },
     };
 
-    setNodes((nodes) => [...nodes, newNode]);
-    setSelectedNodeId(newNode.id);
+    const jsonEvent = canvasToJsonNode(newNode, edges, actions);
 
     if (selectedNodeId) {
-      const newEdge = {
-        id: `e${selectedNodeId}-${newNode.id}`,
-        source: selectedNodeId,
-        target: newNode.id,
-        type: "smoothstep",
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
-      };
-      setEdges((edges) => [...edges, newEdge]);
+      jsonEvent.parent_id = selectedNodeId;
     }
+
+    workflowService.addEvent(jsonEvent, workflowId).then((event: WebEvent) => {
+      setNodes((nodes) => [...nodes, serializerEvents(event)[0]]);
+
+      if (selectedNodeId) {
+        const newEdge = {
+          id: `e${selectedNodeId}-${newNode.id}`,
+          source: selectedNodeId,
+          target: newNode.id,
+          type: "smoothstep",
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
+        };
+        setEdges((edges) => [...edges, newEdge]);
+      }
+
+      setSelectedNodeId(newNode.id);
+    });
   };
 
   const handleSave = async () => {
-    const updatedWorkflow = {
-      ...workflow,
+    const updatedWorkflow: Omit<
+      JsonWorkflow,
+      "id" | "created_at" | "updated_at"
+    > = {
       name: workflowName,
-      description: workflowDescription,
-      nodes,
-      edges,
-      updatedAt: new Date().toISOString(),
+      description: workflowDescription ?? "",
+      events: canvasToJsonNodes(nodes, edges, actions),
+      actions: actions,
+      live_status: true,
+      is_active: true,
     };
 
     try {
-      if (updatedWorkflow.id) {
-        await workflowService.updateWorkflow(
-          updatedWorkflow.id,
-          updatedWorkflow
-        );
+      if (workflowId && workflowId !== "new") {
+        await workflowService.updateWorkflow(workflowId, {
+          ...updatedWorkflow,
+          id: workflowId,
+        });
       } else {
-        await workflowService.createWorkflow(
-          canvasToJsonWorkflow(updatedWorkflow)
-        );
+        await workflowService.createWorkflow(updatedWorkflow);
       }
     } catch (error) {
       console.error("Failed to save workflow:", error);
@@ -269,6 +286,66 @@ const WorkflowEditor: React.FC = () => {
         return node;
       })
     );
+  };
+
+  const addAction = (action: ActionType) => {
+    // Add new action to the selected node
+    const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+    if (selectedNode) {
+      // create an action
+      const newAction: Omit<WebAction, "id" | "created_at" | "updated_at"> = {
+        action_type: action.id,
+        action_config: {},
+        is_active: true,
+        web_message: null,
+        delay_seconds: 0,
+      };
+
+      workflowService
+        .addAction(newAction, selectedNodeId, workflowId)
+        .then((action) => {
+          selectedNode.data.properties.actions = [
+            ...(selectedNode.data.properties.actions || []),
+            action.id,
+          ];
+
+          setNodes([
+            ...nodes.filter((n) => n.id !== selectedNodeId),
+            selectedNode,
+          ]);
+        });
+    }
+  };
+
+  const addTemplate = (template: TemplateListType) => {
+    const newTemplate: Partial<WebTemplate> = {
+      id: `template-${Date.now()}`,
+      title: "",
+      message: "",
+      message_type: "info",
+      display_duration: 5000,
+      template_name: template.name,
+      template_config: {},
+      position: "bottom-right",
+      theme: "custom",
+      custom_theme: {
+        background: "#ffffff",
+        text: "#333333",
+        primary: "#007bff",
+        secondary: "#6c757d",
+      },
+    };
+
+    // add template to the action
+    const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+    if (selectedNode) {
+      selectedNode.data.properties.templates = [
+        ...(selectedNode.data.properties.templates || []),
+        newTemplate,
+      ];
+
+      setNodes([...nodes.filter((n) => n.id !== selectedNodeId), selectedNode]);
+    }
   };
 
   const selectedNode = selectedNodeId
@@ -332,383 +409,227 @@ const WorkflowEditor: React.FC = () => {
         </div>
 
         <div
-          className={`border-l w-96 transition-all duration-300 flex flex-col ${
-            panelExpanded ? "" : "w-12"
-          }`}
+          className={`border-l w-96 transition-all duration-300 flex flex-col h-[calc(100vh-90px)]`}
         >
-          <div className="border-b p-3 flex justify-between items-center bg-muted/50">
-            <h3 className={`font-medium ${panelExpanded ? "" : "hidden"}`}>
-              Workflow Configuration
-            </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setPanelExpanded(!panelExpanded)}
-            >
-              {panelExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronUp className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+          <div className="p-4 flex-1 overflow-y-auto">
+            <Tabs defaultValue="workflow">
+              <TabsList className="w-full">
+                <TabsTrigger value="workflow">Workflow</TabsTrigger>
+                <TabsTrigger value="node" disabled={!selectedNode}>
+                  Properties
+                </TabsTrigger>
+              </TabsList>
 
-          {panelExpanded && (
-            <div className="p-4 flex-1 overflow-y-auto">
-              <Tabs defaultValue="workflow">
-                <TabsList className="w-full">
-                  <TabsTrigger value="workflow">Workflow</TabsTrigger>
-                  <TabsTrigger value="node" disabled={!selectedNode}>
-                    Properties
-                  </TabsTrigger>
-                </TabsList>
+              <TabsContent value="workflow" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="workflow-description">Description</Label>
+                  <Textarea
+                    id="workflow-description"
+                    value={workflowDescription}
+                    onChange={(e) => setWorkflowDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
 
-                <TabsContent value="workflow" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Add Nodes</Label>
                   <div className="space-y-2">
-                    <Label htmlFor="workflow-description">Description</Label>
-                    <Textarea
-                      id="workflow-description"
-                      value={workflowDescription}
-                      onChange={(e) => setWorkflowDescription(e.target.value)}
-                      rows={3}
-                    />
+                    <Card>
+                      <CardHeader className="py-2">
+                        <CardTitle className="text-sm font-medium">
+                          Events
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 py-2">
+                        {eventTypes.map((eventType) => (
+                          <Button
+                            key={eventType.id}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start text-left h-auto py-2"
+                            onClick={() => addNode("event", eventType.id)}
+                          >
+                            <div>
+                              <p>{eventType.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {eventType.description}
+                              </p>
+                            </div>
+                          </Button>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="py-2">
+                        <CardTitle className="text-sm font-medium">
+                          Actions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 py-2">
+                        {actionTypes.map((action) => (
+                          <Button
+                            key={action.id}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start text-left h-auto py-2"
+                            onClick={() => addAction(action)}
+                          >
+                            <div>
+                              <p>{action.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {action.description}
+                              </p>
+                            </div>
+                          </Button>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="py-2">
+                        <CardTitle className="text-sm font-medium">
+                          Templates
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 py-2">
+                        {templates.map((template) => (
+                          <Button
+                            key={template.id}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start text-left h-auto py-2"
+                            onClick={() => addTemplate(template)}
+                          >
+                            <div>
+                              <p>{template.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {template.description}
+                              </p>
+                            </div>
+                          </Button>
+                        ))}
+                      </CardContent>
+                    </Card>
                   </div>
+                </div>
+              </TabsContent>
 
-                  <div className="space-y-2">
-                    <Label>Add Nodes</Label>
-                    <div className="space-y-2">
-                      <Card>
-                        <CardHeader className="py-2">
-                          <CardTitle className="text-sm font-medium">
-                            Events
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 py-2">
-                          {eventTypes.map((eventType) => (
-                            <Button
-                              key={eventType.id}
-                              variant="outline"
-                              size="sm"
-                              className="w-full justify-start text-left h-auto py-2"
-                              onClick={() => addNode("event", eventType.id)}
-                            >
-                              <div>
-                                <p>{eventType.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {eventType.description}
-                                </p>
-                              </div>
-                            </Button>
-                          ))}
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="py-2">
-                          <CardTitle className="text-sm font-medium">
-                            Actions
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 py-2">
-                          {actionTypes.map((actionType) => (
-                            <Button
-                              key={actionType.id}
-                              variant="outline"
-                              size="sm"
-                              className="w-full justify-start text-left h-auto py-2"
-                              onClick={() => addNode("action", actionType.id)}
-                            >
-                              <div>
-                                <p>{actionType.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {actionType.description}
-                                </p>
-                              </div>
-                            </Button>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="node" className="space-y-4 mt-4">
-                  {selectedNode && (
-                    <div>
-                      <h3 className="font-medium mb-2">
+              <TabsContent value="node" className="space-y-4 mt-4">
+                {selectedNode && (
+                  <div>
+                    <h3 className="font-medium mb-2">
+                      {selectedNode.data.label}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {selectedNode.data.description}
+                    </p>
+                    <div className="mt-2">
+                      <Label>Event Name</Label>
+                      <p className="text-xs text-muted-foreground mb-4">
                         {selectedNode.data.label}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {selectedNode.data.description}
                       </p>
+                    </div>
+                    <div className="mt-2">
+                      <Label>Event Type</Label>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        {selectedNode.data.type}
+                      </p>
+                    </div>
+                    <div className="mt-2">
+                      <Label>Parent Event</Label>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        {selectedNode.data.properties.parent_id}
+                        {selectedNode.data.properties.parent?.name}
+                      </p>
+                    </div>
 
-                      {selectedNode.type === "event" && (
-                        <div className="space-y-4">
-                          {selectedNode.data.type === "page_view" && (
-                            <div className="space-y-2">
-                              <Label>URL Pattern</Label>
-                              <Input
-                                placeholder="/path/*"
-                                value={
-                                  selectedNode.data.properties.urlPattern || ""
-                                }
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    urlPattern: e.target.value,
-                                  })
-                                }
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Enter URL pattern to match. Use * as wildcard.
-                              </p>
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "button_click" && (
-                            <div className="space-y-2">
-                              <Label>Button Selector</Label>
-                              <Input
-                                placeholder="#signup-button, .cta-button"
-                                value={
-                                  selectedNode.data.properties.buttonSelector ||
-                                  ""
-                                }
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    buttonSelector: e.target.value,
-                                  })
-                                }
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                CSS selector to identify the button.
-                              </p>
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "form_submit" && (
-                            <div className="space-y-2">
-                              <Label>Form Selector</Label>
-                              <Input
-                                placeholder="#contact-form"
-                                value={
-                                  selectedNode.data.properties.formSelector ||
-                                  ""
-                                }
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    formSelector: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "time_spent" && (
-                            <div className="space-y-2">
-                              <Label>Time (seconds)</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={
-                                  selectedNode.data.properties.seconds || 30
-                                }
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    seconds: parseInt(e.target.value),
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "scroll_depth" && (
-                            <div className="space-y-2">
-                              <Label>Scroll Percentage</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="100"
-                                value={
-                                  selectedNode.data.properties.percentage || 50
-                                }
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    percentage: parseInt(e.target.value),
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {selectedNode.type === "action" && (
-                        <div className="space-y-4">
-                          {selectedNode.data.type === "show_message" && (
-                            <div className="space-y-2">
-                              <Label>Select Template</Label>
-                              <Select
-                                value={
-                                  selectedNode.data.properties.templateId || ""
-                                }
-                                onValueChange={(value) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    templateId: value,
-                                  })
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a template" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="t1">
-                                    Welcome Message
-                                  </SelectItem>
-                                  <SelectItem value="t2">
-                                    Special Offer
-                                  </SelectItem>
-                                  <SelectItem value="t3">
-                                    Feature Announcement
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-
-                              <div className="mt-2">
-                                <Label>Delay (seconds)</Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={
-                                    selectedNode.data.properties.delay || 0
-                                  }
-                                  onChange={(e) =>
-                                    updateNodeProperties(selectedNode.id, {
-                                      delay: parseInt(e.target.value),
-                                    })
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "redirect" && (
-                            <div className="space-y-2">
-                              <Label>Redirect URL</Label>
-                              <Input
-                                placeholder="https://example.com/page"
-                                value={selectedNode.data.properties.url || ""}
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    url: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "tag_user" && (
-                            <div className="space-y-2">
-                              <Label>Tag Name</Label>
-                              <Input
-                                placeholder="interested-in-product"
-                                value={selectedNode.data.properties.tag || ""}
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    tag: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "webhook" && (
-                            <div className="space-y-2">
-                              <Label>Webhook URL</Label>
-                              <Input
-                                placeholder="https://api.example.com/hook"
-                                value={
-                                  selectedNode.data.properties.webhookUrl || ""
-                                }
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    webhookUrl: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {selectedNode.data.type === "wait" && (
-                            <div className="space-y-2">
-                              <Label>Wait Duration</Label>
-                              <div className="flex space-x-2">
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={
-                                    selectedNode.data.properties.duration || 1
-                                  }
-                                  onChange={(e) =>
-                                    updateNodeProperties(selectedNode.id, {
-                                      duration: parseInt(e.target.value),
-                                    })
-                                  }
-                                />
-                                <Select
-                                  value={
-                                    selectedNode.data.properties.unit ||
-                                    "minutes"
-                                  }
-                                  onValueChange={(value) =>
-                                    updateNodeProperties(selectedNode.id, {
-                                      unit: value,
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger className="w-40">
-                                    <SelectValue placeholder="Unit" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="minutes">
-                                      Minutes
-                                    </SelectItem>
-                                    <SelectItem value="hours">Hours</SelectItem>
-                                    <SelectItem value="days">Days</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="mt-6">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            setNodes(
-                              nodes.filter((n) => n.id !== selectedNodeId)
-                            );
-                            setEdges(
-                              edges.filter(
-                                (e) =>
-                                  e.source !== selectedNodeId &&
-                                  e.target !== selectedNodeId
-                              )
-                            );
-                            setSelectedNodeId(null);
-                          }}
+                    <div className="mt-2 space-y-2">
+                      <Label>Actions</Label>
+                      {selectedActions?.map((action) => (
+                        <div
+                          key={action.id}
+                          className="text-xs text-muted-foreground mb-4"
                         >
-                          Delete Node
-                        </Button>
+                          <p>{action.action_type}</p>
+                          <p>{JSON.stringify(action.action_config)}</p>
+                        </div>
+                      ))}
+
+                      <div className="space-y-4">
+                        {selectedNode.data.properties?.actions?.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Select Template</Label>
+                            <Select
+                              value={
+                                selectedNode.data.properties.templateId || ""
+                              }
+                              onValueChange={(value) =>
+                                updateNodeProperties(selectedNode.id, {
+                                  templateId: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a template" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="t1">
+                                  Welcome Message
+                                </SelectItem>
+                                <SelectItem value="t2">
+                                  Special Offer
+                                </SelectItem>
+                                <SelectItem value="t3">
+                                  Feature Announcement
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            <div className="mt-2">
+                              <Label>Delay (seconds)</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={selectedNode.data.properties.delay || 0}
+                                onChange={(e) =>
+                                  updateNodeProperties(selectedNode.id, {
+                                    delay: parseInt(e.target.value),
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
+
+                    <div className="mt-6">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setNodes(
+                            nodes.filter((n) => n.id !== selectedNodeId)
+                          );
+                          setEdges(
+                            edges.filter(
+                              (e) =>
+                                e.source !== selectedNodeId &&
+                                e.target !== selectedNodeId
+                            )
+                          );
+                          setSelectedNodeId(null);
+                        }}
+                      >
+                        Delete Node
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   TemplateListType,
   WebAction,
   WebEvent,
+  WebMessage,
 } from "@/types/workflow";
 
 export class WorkflowService extends ApiService {
@@ -40,12 +41,12 @@ export class WorkflowService extends ApiService {
   }
 
   async createWorkflow(
-    data: Omit<JsonWorkflow, "id" | "created_at" | "updated_at">
+    workflow: Omit<JsonWorkflow, "id" | "created_at" | "updated_at">
   ): Promise<JsonWorkflow> {
     if (this.mockEnabled) {
       const newWorkflow: JsonWorkflow = {
         id: (this.mockData.workflows.length + 1).toString(),
-        ...data,
+        ...workflow,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -53,12 +54,12 @@ export class WorkflowService extends ApiService {
       return newWorkflow;
     }
 
-    return this.request<JsonWorkflow>("POST", "/workflow/", data);
+    return this.request<JsonWorkflow>("POST", "/workflow/", workflow);
   }
 
   async updateWorkflow(
     id: string,
-    data: Partial<JsonWorkflow>
+    workflow: Partial<JsonWorkflow>
   ): Promise<JsonWorkflow> {
     if (this.mockEnabled) {
       const index = this.mockData.workflows.findIndex((w) => w.id === id);
@@ -67,12 +68,12 @@ export class WorkflowService extends ApiService {
       }
       this.mockData.workflows[index] = {
         ...this.mockData.workflows[index],
-        ...data,
+        ...workflow,
       };
       return this.mockData.workflows[index];
     }
 
-    return this.request<JsonWorkflow>("PUT", `/workflow/${id}/`, data);
+    return this.request<JsonWorkflow>("PUT", `/workflow/${id}/`, workflow);
   }
 
   async deleteWorkflow(id: string): Promise<{ success: boolean }> {
@@ -159,6 +160,24 @@ export class WorkflowService extends ApiService {
     return this.request<WebAction>(
       "DELETE",
       `/workflow/${workflowId}/events/${eventId}/actions/${actionId}/`
+    );
+  }
+
+  async updateTemplate(
+    template: WebMessage,
+    workflowId: string
+  ): Promise<WebMessage> {
+    return this.request<WebMessage>(
+      "PUT",
+      `/messages/${workflowId}/templates/${template.id}/`,
+      template
+    );
+  }
+
+  async deleteTemplate(templateId: string, workflowId: string): Promise<void> {
+    return this.request<void>(
+      "DELETE",
+      `/messages/${workflowId}/templates/${templateId}/`
     );
   }
 }

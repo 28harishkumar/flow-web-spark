@@ -65,7 +65,7 @@ export interface TemplateConfig {
 }
 
 export interface WebMessage {
-  id: number;
+  id: string;
   title: string;
   message: string;
   message_type?: "info" | "warning" | "success" | "error";
@@ -154,22 +154,4 @@ export interface TemplateListType {
   id: string;
   name: string;
   description: string;
-}
-
-export interface WebTemplate {
-  id: string;
-  title: string;
-  message: string;
-  message_type: "info" | "warning" | "success" | "error";
-  display_duration: number;
-  template_name: string;
-  template_config: TemplateConfig;
-  position:
-    | "top-right"
-    | "top-left"
-    | "bottom-right"
-    | "bottom-left"
-    | "center";
-  theme: "light" | "dark" | "custom";
-  custom_theme: ThemeConfig;
 }

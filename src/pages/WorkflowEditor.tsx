@@ -4,13 +4,11 @@ import {
   Background,
   Controls,
   MiniMap,
-  Panel,
   useNodesState,
   useEdgesState,
   addEdge,
   MarkerType,
   NodeTypes,
-  NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -19,14 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import EventNode from "../components/flow/EventNode";
 import ActionNode from "../components/flow/ActionNode";
 import {
@@ -36,7 +27,7 @@ import {
   TemplateListType,
   WebAction,
   WebEvent,
-  WebTemplate,
+  WebMessage,
 } from "@/types/workflow";
 import { WorkflowService } from "@/services/workflow";
 import { useNavigate, useParams } from "react-router-dom";
@@ -47,6 +38,8 @@ import {
   jsonToCanvasWorkflow,
   serializerEvents,
 } from "@/lib/workflow";
+import ActionConfig from "@/components/workflow/ActionConfig";
+import TemplateConfig from "@/components/workflow/TemplateConfig";
 
 import { EventType, ActionType } from "@/types/workflow";
 
@@ -97,10 +90,14 @@ const WorkflowEditor: React.FC = () => {
   const [actions, setActions] = useState<WebAction[]>([]);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [actionTypes, setActionTypes] = useState<ActionType[]>([]);
-  const [templates, setTemplates] = useState<TemplateListType[]>([]);
+
   const [selectedActions, setSelectedActions] = useState<WebAction[]>([]);
   const workflowService = new WorkflowService();
   const navigate = useNavigate();
+
+  const selectedNode = selectedNodeId
+    ? nodes.find((node) => node.id === selectedNodeId)
+    : null;
 
   const onNodeClick = useCallback(
     (_, node) => {
@@ -131,10 +128,6 @@ const WorkflowEditor: React.FC = () => {
 
       workflowService.getActionTypes().then((actionTypes) => {
         setActionTypes(actionTypes);
-      });
-
-      workflowService.getTemplates().then((templates) => {
-        setTemplates(templates);
       });
     }
   }, [workflowId]);
@@ -313,44 +306,39 @@ const WorkflowEditor: React.FC = () => {
             ...nodes.filter((n) => n.id !== selectedNodeId),
             selectedNode,
           ]);
+
+          setSelectedActions([...selectedActions, action]);
         });
     }
   };
 
-  const addTemplate = (template: TemplateListType) => {
-    const newTemplate: Partial<WebTemplate> = {
-      id: `template-${Date.now()}`,
-      title: "",
-      message: "",
-      message_type: "info",
-      display_duration: 5000,
-      template_name: template.name,
-      template_config: {},
-      position: "bottom-right",
-      theme: "custom",
-      custom_theme: {
-        background: "#ffffff",
-        text: "#333333",
-        primary: "#007bff",
-        secondary: "#6c757d",
-      },
-    };
-
-    // add template to the action
-    const selectedNode = nodes.find((node) => node.id === selectedNodeId);
-    if (selectedNode) {
-      selectedNode.data.properties.templates = [
-        ...(selectedNode.data.properties.templates || []),
-        newTemplate,
-      ];
-
-      setNodes([...nodes.filter((n) => n.id !== selectedNodeId), selectedNode]);
+  const handleUpdateAction = async (action: WebAction) => {
+    try {
+      await workflowService.updateAction(action, selectedNodeId, workflowId);
+      setActions(actions.map((a) => (a.id === action.id ? action : a)));
+    } catch (error) {
+      console.error("Failed to update action:", error);
     }
   };
 
-  const selectedNode = selectedNodeId
-    ? nodes.find((node) => node.id === selectedNodeId)
-    : null;
+  const handleDeleteAction = async (actionId: string) => {
+    try {
+      await workflowService.deleteAction(actionId, selectedNodeId, workflowId);
+      setActions(actions.filter((a) => a.id !== actionId));
+      // Update the selected node's properties to remove the action reference
+      if (selectedNodeId) {
+        const node = nodes.find((n) => n.id === selectedNodeId);
+        if (node) {
+          node.data.properties.actions = node.data.properties.actions?.filter(
+            (id) => id !== actionId
+          );
+          setNodes([...nodes]);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete action:", error);
+    }
+  };
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
@@ -485,32 +473,6 @@ const WorkflowEditor: React.FC = () => {
                         ))}
                       </CardContent>
                     </Card>
-
-                    <Card>
-                      <CardHeader className="py-2">
-                        <CardTitle className="text-sm font-medium">
-                          Templates
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2 py-2">
-                        {templates.map((template) => (
-                          <Button
-                            key={template.id}
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start text-left h-auto py-2"
-                            onClick={() => addTemplate(template)}
-                          >
-                            <div>
-                              <p>{template.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {template.description}
-                              </p>
-                            </div>
-                          </Button>
-                        ))}
-                      </CardContent>
-                    </Card>
                   </div>
                 </div>
               </TabsContent>
@@ -547,61 +509,15 @@ const WorkflowEditor: React.FC = () => {
                     <div className="mt-2 space-y-2">
                       <Label>Actions</Label>
                       {selectedActions?.map((action) => (
-                        <div
+                        <ActionConfig
                           key={action.id}
-                          className="text-xs text-muted-foreground mb-4"
-                        >
-                          <p>{action.action_type}</p>
-                          <p>{JSON.stringify(action.action_config)}</p>
-                        </div>
+                          action={action}
+                          workflow={workflow}
+                          node={selectedNode}
+                          onUpdate={handleUpdateAction}
+                          onDelete={handleDeleteAction}
+                        />
                       ))}
-
-                      <div className="space-y-4">
-                        {selectedNode.data.properties?.actions?.length > 0 && (
-                          <div className="space-y-2">
-                            <Label>Select Template</Label>
-                            <Select
-                              value={
-                                selectedNode.data.properties.templateId || ""
-                              }
-                              onValueChange={(value) =>
-                                updateNodeProperties(selectedNode.id, {
-                                  templateId: value,
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a template" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="t1">
-                                  Welcome Message
-                                </SelectItem>
-                                <SelectItem value="t2">
-                                  Special Offer
-                                </SelectItem>
-                                <SelectItem value="t3">
-                                  Feature Announcement
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-
-                            <div className="mt-2">
-                              <Label>Delay (seconds)</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                value={selectedNode.data.properties.delay || 0}
-                                onChange={(e) =>
-                                  updateNodeProperties(selectedNode.id, {
-                                    delay: parseInt(e.target.value),
-                                  })
-                                }
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     <div className="mt-6">

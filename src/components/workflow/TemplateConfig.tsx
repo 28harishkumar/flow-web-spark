@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { templates } from "./templates";
 
 interface TemplateConfigProps {
   template: WebMessage;
@@ -26,10 +27,25 @@ const TemplateConfig: React.FC<TemplateConfigProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTemplate, setEditedTemplate] = useState<WebMessage>(template);
+  const TemplateComponent =
+    templates[template.template_name as keyof typeof templates];
 
   const handleSave = () => {
     onUpdate(editedTemplate);
     setIsEditing(false);
+  };
+
+  const handleConfigChange = (
+    key: string,
+    value: string | number | boolean | object
+  ) => {
+    setEditedTemplate({
+      ...editedTemplate,
+      template_config: {
+        ...editedTemplate.template_config,
+        [key]: value,
+      },
+    });
   };
 
   return (
@@ -247,6 +263,48 @@ const TemplateConfig: React.FC<TemplateConfigProps> = ({
                     />
                   </div>
                 </div>
+              </div>
+            )}
+            {/* Template-specific configuration */}
+            {TemplateComponent && (
+              <div className="mt-4">
+                <Label>Template Configuration</Label>
+                {/* Add template-specific configuration fields here */}
+                {/* For example, for SpecialOffer: */}
+                {template.template_name === "special-offer" && (
+                  <div className="space-y-2">
+                    <div>
+                      <Label>Image URL</Label>
+                      <Input
+                        value={editedTemplate.template_config?.image_url || ""}
+                        onChange={(e) =>
+                          handleConfigChange("image_url", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Button Text</Label>
+                      <Input
+                        value={
+                          editedTemplate.template_config?.button_text || ""
+                        }
+                        onChange={(e) =>
+                          handleConfigChange("button_text", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Button URL</Label>
+                      <Input
+                        value={editedTemplate.template_config?.button_url || ""}
+                        onChange={(e) =>
+                          handleConfigChange("button_url", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Add configuration fields for other template types */}
               </div>
             )}
           </div>

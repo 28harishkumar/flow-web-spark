@@ -163,21 +163,19 @@ export class WorkflowService extends ApiService {
     );
   }
 
-  async updateTemplate(
-    template: WebMessage,
-    workflowId: string
-  ): Promise<WebMessage> {
+  async addWebMessage(webMessage: Partial<WebMessage>): Promise<WebMessage> {
+    return this.request<WebMessage>("POST", `/messages/`, webMessage);
+  }
+
+  async updateWebMessage(webMessage: WebMessage): Promise<WebMessage> {
     return this.request<WebMessage>(
       "PUT",
-      `/messages/${workflowId}/templates/${template.id}/`,
-      template
+      `/messages/messages/${webMessage.id}/`,
+      webMessage
     );
   }
 
-  async deleteTemplate(templateId: string, workflowId: string): Promise<void> {
-    return this.request<void>(
-      "DELETE",
-      `/messages/${workflowId}/templates/${templateId}/`
-    );
+  async deleteWebMessage(webMessageId: string): Promise<void> {
+    return this.request<void>("DELETE", `/messages/${webMessageId}/`);
   }
 }

@@ -40,28 +40,57 @@ export interface TemplateConfig {
   image_url?: string;
   button_text?: string;
   button_url?: string;
+  // Feedback Campaign
+  rating_options?: Array<{
+    value: number;
+    label: string;
+  }>;
+  onRatingSelect?: (value: number) => void;
+  show_comment_box?: boolean;
+  comment_placeholder?: string;
+  // Survey Campaign
+  questions?: Array<{
+    id: string;
+    text: string;
+    type: "multiple_choice" | "text" | "scale";
+    options?: string[];
+    min?: number;
+    max?: number;
+  }>;
+  // Newsletter Campaign
+  email_placeholder?: string;
+  show_name_field?: boolean;
+  name_placeholder?: string;
+  show_consent_checkbox?: boolean;
+  consent_text?: string;
+  // Social Sharing Campaign
+  social_platforms?: Array<{
+    name: string;
+    icon: string;
+    url: string;
+  }>;
+  show_copy_link?: boolean;
+  share_url?: string;
+  // Countdown Campaign
+  end_date?: string;
+  // Feature Announcement
   features?: Array<{
     title: string;
     description: string;
     icon: string;
   }>;
-  questions?: Array<{
-    type: "multiple_choice" | "text" | "scale";
-    question: string;
-    options?: string[];
-    min?: number;
-    max?: number;
-  }>;
-  preferences?: string[];
-  benefits?: string[];
-  platforms?: string[];
-  referral_code?: string;
-  countdown_end?: string;
+  // Special Offer
   pricing?: {
     amount: number;
     currency: string;
     period: string;
   };
+  countdown_end?: string;
+  // Common
+  preferences?: string[];
+  benefits?: string[];
+  platforms?: string[];
+  referral_code?: string;
 }
 
 export interface WebMessage {
@@ -90,6 +119,8 @@ export interface WebAction {
   action_type: string;
   action_config: Record<string, unknown>;
   web_message?: WebMessage;
+  web_message_id?: string;
+  workflow_event: string;
   delay_seconds?: number;
   is_active: boolean;
   created_at: string;

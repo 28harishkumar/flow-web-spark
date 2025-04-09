@@ -291,6 +291,7 @@ const WorkflowEditor: React.FC = () => {
         action_config: {},
         is_active: true,
         web_message: null,
+        workflow_event: selectedNode.id,
         delay_seconds: 0,
       };
 
@@ -314,8 +315,28 @@ const WorkflowEditor: React.FC = () => {
 
   const handleUpdateAction = async (action: WebAction) => {
     try {
-      await workflowService.updateAction(action, selectedNodeId, workflowId);
-      setActions(actions.map((a) => (a.id === action.id ? action : a)));
+      const axn = await workflowService.updateAction(
+        action,
+        selectedNodeId,
+        workflowId
+      );
+      setActions(actions.map((a) => (a.id === action.id ? axn : a)));
+      setNodes(
+        nodes.map((n) =>
+          n.id === selectedNodeId
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  properties: {
+                    ...n.data.properties,
+                    actions: [...n.data.properties.actions, axn.id],
+                  },
+                },
+              }
+            : n
+        )
+      );
     } catch (error) {
       console.error("Failed to update action:", error);
     }

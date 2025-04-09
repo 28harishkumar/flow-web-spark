@@ -33,7 +33,7 @@ const BaseTemplate: React.FC<BaseTemplateProps> = ({
       }`}
       style={{
         ...getThemeStyles(),
-        ...getPositionStyles(template.position),
+        // ...getPositionStyles(template.position),
       }}
     >
       {children}

@@ -29,6 +29,15 @@ import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/tracking";
 import { WorkflowService } from "@/services/workflow";
 import { EventType } from "@/types/workflow";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 interface EventsViewProps {
   externalId: string;
@@ -41,6 +50,8 @@ const EventsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEventId, setSelectedEventId] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const workflowService = new WorkflowService();
 
   useEffect(() => {
@@ -52,9 +63,9 @@ const EventsView: React.FC = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const userEvents = await workflowService.getUserEvents(false);
+        fetchUserEvents();
         const uniqueUserEvents = await workflowService.getUserEvents();
-        setEvents(userEvents);
+
         setEventTypes(uniqueUserEvents);
       } catch (error) {
         console.error("Failed to fetch events:", error);
@@ -65,6 +76,23 @@ const EventsView: React.FC = () => {
 
     fetchEvents();
   }, [currentUser?.id]);
+
+  const fetchUserEvents = async (page = 0) => {
+    try {
+      const userEvents = await workflowService.getUserEvents(false, {
+        page,
+        limit: 10,
+      });
+      setEvents(userEvents);
+      setTotalPages(Math.ceil(userEvents.length / 10));
+    } catch (error) {
+      console.error("Failed to fetch events:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserEvents(currentPage);
+  }, [currentPage]);
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
@@ -170,7 +198,7 @@ const EventsView: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
-                  {events.map((type) => (
+                  {eventTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name
                         .replace(/_/g, " ")
@@ -197,27 +225,126 @@ const EventsView: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEvents.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell>
-                    <Badge variant="outline">{event.name}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <pre className="text-xs whitespace-pre-wrap">
-                      {JSON.stringify(event.description, null, 2)}
-                    </pre>
-                  </TableCell>
-                  <TableCell>{currentUser?.id}</TableCell>
-                  <TableCell>
-                    {new Date(event.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredEvents
+                .slice(currentPage * 10, (currentPage + 1) * 10)
+                .map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell>
+                      <Badge variant="outline">{event.name}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <pre className="text-xs whitespace-pre-wrap">
+                        {JSON.stringify(event.description, null, 2)}
+                      </pre>
+                    </TableCell>
+                    <TableCell>{currentUser?.id}</TableCell>
+                    <TableCell>
+                      {new Date(event.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
+          <div className="mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(0, prev - 1))
+                    }
+                    className={
+                      currentPage === 0 ? "pointer-events-none opacity-50" : ""
+                    }
+                  />
+                </PaginationItem>
+                {(() => {
+                  const pages = [];
+                  const maxPages = 5;
+                  let startPage = Math.max(
+                    0,
+                    currentPage - Math.floor(maxPages / 2)
+                  );
+                  const endPage = Math.min(
+                    totalPages - 1,
+                    startPage + maxPages - 1
+                  );
+
+                  if (endPage - startPage + 1 < maxPages) {
+                    startPage = Math.max(0, endPage - maxPages + 1);
+                  }
+
+                  if (startPage > 0) {
+                    pages.push(
+                      <PaginationItem key="first">
+                        <PaginationLink onClick={() => setCurrentPage(0)}>
+                          1
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                    if (startPage > 1) {
+                      pages.push(
+                        <PaginationItem key="start-ellipsis">
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                  }
+
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(i)}
+                          isActive={currentPage === i}
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+
+                  if (endPage < totalPages - 1) {
+                    if (endPage < totalPages - 2) {
+                      pages.push(
+                        <PaginationItem key="end-ellipsis">
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    pages.push(
+                      <PaginationItem key="last">
+                        <PaginationLink
+                          onClick={() => setCurrentPage(totalPages - 1)}
+                        >
+                          {totalPages}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+
+                  return pages;
+                })()}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(totalPages - 1, prev + 1)
+                      )
+                    }
+                    className={
+                      currentPage === totalPages - 1
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -89,11 +89,15 @@ export class WorkflowService extends ApiService {
     return this.request<{ success: boolean }>("DELETE", `/workflow/${id}/`);
   }
 
-  async getUserEvents(unique = true): Promise<EventType[]> {
+  async getUserEvents(
+    unique = true,
+    params: { page?: number; limit?: number } = {}
+  ): Promise<EventType[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return this.request<any[]>(
       "GET",
-      `/user-events/events/list/?unique_type=${unique}`
+      `/user-events/events/list/?unique_type=${unique}`,
+      params
     ).then((res) =>
       res.map((event) => ({
         id: event.id,

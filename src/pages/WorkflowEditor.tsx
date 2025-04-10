@@ -428,6 +428,9 @@ const WorkflowEditor: React.FC = () => {
                 <TabsTrigger value="node" disabled={!selectedNode}>
                   Properties
                 </TabsTrigger>
+                <TabsTrigger value="events" disabled={!selectedNode}>
+                  Node Json
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="workflow" className="space-y-4 mt-4">
@@ -479,32 +482,6 @@ const WorkflowEditor: React.FC = () => {
                         ))}
                       </CardContent>
                     </Card>
-
-                    <Card>
-                      <CardHeader className="py-2">
-                        <CardTitle className="text-sm font-medium">
-                          Actions
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2 py-2">
-                        {actionTypes.map((action) => (
-                          <Button
-                            key={action.id}
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start text-left h-auto py-2"
-                            onClick={() => addAction(action)}
-                          >
-                            <div>
-                              <p>{action.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {action.description}
-                              </p>
-                            </div>
-                          </Button>
-                        ))}
-                      </CardContent>
-                    </Card>
                   </div>
                 </div>
               </TabsContent>
@@ -518,25 +495,26 @@ const WorkflowEditor: React.FC = () => {
                     <p className="text-sm text-muted-foreground mb-4">
                       {selectedNode.data.description}
                     </p>
-                    <div className="mt-2">
-                      <Label>Event Name</Label>
-                      <p className="text-xs text-muted-foreground mb-4">
-                        {selectedNode.data.label}
-                      </p>
-                    </div>
-                    <div className="mt-2">
-                      <Label>Event Type</Label>
-                      <p className="text-xs text-muted-foreground mb-4">
-                        {selectedNode.data.type}
-                      </p>
-                    </div>
-                    <div className="mt-2">
-                      <Label>Parent Event</Label>
-                      <p className="text-xs text-muted-foreground mb-4">
-                        {selectedNode.data.properties.parent_id}
-                        {selectedNode.data.properties.parent?.name}
-                      </p>
-                    </div>
+
+                    <Label className="text-sm font-medium">Add Action</Label>
+                    <CardContent className="space-y-2 py-2  px-0">
+                      {actionTypes.map((action) => (
+                        <Button
+                          key={action.id}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-left h-auto py-2"
+                          onClick={() => addAction(action)}
+                        >
+                          <div>
+                            <p>{action.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {action.description}
+                            </p>
+                          </div>
+                        </Button>
+                      ))}
+                    </CardContent>
 
                     <div className="mt-2 space-y-2">
                       <Label>Actions</Label>
@@ -575,6 +553,16 @@ const WorkflowEditor: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </TabsContent>
+              <TabsContent value="events" className="space-y-4 mt-4">
+                <pre className="text-xs whitespace-pre-wrap cursor-pointer hover:bg-muted p-2 rounded">
+                  {selectedNode &&
+                    JSON.stringify(
+                      canvasToJsonNode(selectedNode, edges, actions),
+                      null,
+                      2
+                    )}
+                </pre>
               </TabsContent>
             </Tabs>
           </div>

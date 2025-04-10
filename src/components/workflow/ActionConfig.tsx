@@ -29,6 +29,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createSlug } from "@/lib/utils";
+import { Editor } from "@monaco-editor/react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@radix-ui/react-accordion";
 
 interface ActionConfigProps {
   action: WebAction;
@@ -136,25 +143,12 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
 
   return (
     <Card className="mb-4">
-      <CardHeader className="py-2">
+      <CardHeader className="p-2">
         <div className="flex justify-between items-center">
           <CardTitle className="text-sm font-medium">
             {action.action_type}
           </CardTitle>
           <div className="flex gap-2">
-            {isEditing ? (
-              <Button variant="ghost" size="sm" onClick={handleSave}>
-                <Save className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            )}
             <Button
               variant="ghost"
               size="sm"
@@ -165,7 +159,59 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="py-2">
+      <CardContent className="p-2 border-t">
+        <div className="space-y-4">
+          <div className="p-0">
+            <div className="p-2 flex justify-between items-center flex-row">
+              <p className="text-md font-medium">Goal</p>
+              <Button variant="ghost" size="sm">
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-2">
+              <div className="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4 border-t">
+          <div className="p-0">
+            <div className="p-2 flex justify-between items-center flex-row">
+              <p className="text-md font-medium">Who</p>
+              <Button variant="ghost" size="sm">
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-2">
+              <div className="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4 border-t">
+          <div className="p-0">
+            <div className="p-2 flex justify-between items-center flex-row">
+              <p className="text-md font-medium">What</p>
+              <Button variant="ghost" size="sm">
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-2">
+              <div className="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4 border-t">
+          <div className="p-0">
+            <div className="p-2 flex justify-between items-center flex-row">
+              <p className="text-md font-medium">When</p>
+              <Button variant="ghost" size="sm">
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-2">
+              <div className="space-y-2"></div>
+            </div>
+          </div>
+        </div>
         {isEditing ? (
           <div className="space-y-2">
             <div>
@@ -183,11 +229,23 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
             </div>
             <div>
               <Label>Action Config</Label>
-              <Input
-                value={JSON.stringify(editedAction.action_config)}
+              <Editor
+                height="150px"
+                defaultLanguage="json"
+                value={JSON.stringify(editedAction.action_config, null, 2)}
+                options={{
+                  readOnly: false,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  fontSize: 14,
+                  lineNumbers: "on",
+                  folding: true,
+                  lineDecorationsWidth: 0,
+                  lineNumbersMinChars: 3,
+                }}
                 onChange={(e) => {
                   try {
-                    const config = JSON.parse(e.target.value);
+                    const config = JSON.parse(e);
                     setEditedAction({
                       ...editedAction,
                       action_config: config,
@@ -246,21 +304,24 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
             <p className="text-sm">
               Delay: {action.delay_seconds || 0} seconds
             </p>
-            <p className="text-sm">
-              Config: {JSON.stringify(action.action_config)}
-            </p>
+            <p className="text-sm">Config</p>
+            <pre className="text-xs whitespace-pre-wrap cursor-pointer hover:bg-muted p-2 rounded">
+              {JSON.stringify(action.action_config)}
+            </pre>
             {action.web_message && (
               <div className="flex items-center gap-2">
                 <p className="text-sm">
                   Template: {action.web_message.template_name}
                 </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowTemplateConfig(true)}
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
+                {isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowTemplateConfig(true)}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>

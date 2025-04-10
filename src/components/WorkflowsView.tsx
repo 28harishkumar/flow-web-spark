@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -16,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { WorkflowService } from "@/services/workflow";
+import { trackEvent } from "@/lib/tracking";
 
 const WorkflowsView: React.FC = () => {
   const workflowService = new WorkflowService();
@@ -29,6 +30,12 @@ const WorkflowsView: React.FC = () => {
   const handleEditWorkflow = (workflow: JsonWorkflow) => {
     navigate(`/dashboard/workflows/${workflow.id}`);
   };
+
+  useEffect(() => {
+    trackEvent("WorkflowsViewed", {
+      page: "workflows",
+    });
+  }, []);
 
   if (isLoading) {
     return (

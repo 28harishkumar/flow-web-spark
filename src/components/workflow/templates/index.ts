@@ -1,6 +1,6 @@
 import WelcomeMessage from "./WelcomeMessage";
 import SpecialOffer from "./SpecialOffer";
-import FeatureAnnouncement from "./FeatureAnnouncement";
+import ProductAnnouncement from "./ProductAnnouncement";
 import FeedbackCampaign from "./FeedbackCampaign";
 import SurveyCampaign from "./SurveyCampaign";
 import NewsletterCampaign from "./NewsletterCampaign";
@@ -10,7 +10,7 @@ import CountdownCampaign from "./CountdownCampaign";
 export const templates = {
   welcome_campaign: WelcomeMessage,
   promotional_campaign: SpecialOffer,
-  product_announcement: FeatureAnnouncement,
+  product_announcement: ProductAnnouncement,
   feedback_campaign: FeedbackCampaign,
   survey_campaign: SurveyCampaign,
   newsletter_campaign: NewsletterCampaign,
@@ -21,7 +21,7 @@ export const templates = {
 export {
   WelcomeMessage,
   SpecialOffer,
-  FeatureAnnouncement,
+  ProductAnnouncement,
   FeedbackCampaign,
   SurveyCampaign,
   NewsletterCampaign,

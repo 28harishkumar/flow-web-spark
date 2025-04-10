@@ -4,6 +4,7 @@ import { User } from "@/types/user";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthService } from "@/services/auth";
+import { initMarketingClient } from "@/lib/tracking";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -22,6 +23,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const parsedUser = JSON.parse(storedUser);
         setCurrentUser(parsedUser);
+
+        initTracking(parsedUser.id, {
+          email: parsedUser.email,
+          first_name: parsedUser.first_name,
+          last_name: parsedUser.last_name,
+        });
       } catch (error) {
         localStorage.removeItem("user_token");
         localStorage.removeItem("user");
@@ -30,6 +37,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setLoading(false);
   }, []);
+
+  const initTracking = async (
+    userId?: string,
+    attributes?: Record<string, string | number | boolean>
+  ) => {
+    if (userId) {
+      await initMarketingClient(userId, attributes);
+    }
+  };
 
   const login = async (username: string, password: string) => {
     try {
@@ -41,6 +57,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem("user", JSON.stringify(response.user));
 
       setCurrentUser(response.user);
+
+      initTracking(response.user.id, {
+        email: response.user.email,
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
+      });
 
       toast({
         title: "Login successful",

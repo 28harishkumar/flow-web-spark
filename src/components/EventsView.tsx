@@ -24,9 +24,11 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { CalendarIcon, SearchIcon } from "lucide-react";
-import { UserEventsService, UserEvent } from "@/services/userEvents";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
+import { trackEvent } from "@/lib/tracking";
+import { WorkflowService } from "@/services/workflow";
+import { EventType } from "@/types/workflow";
 
 interface EventsViewProps {
   externalId: string;
@@ -34,22 +36,26 @@ interface EventsViewProps {
 
 const EventsView: React.FC = () => {
   const { currentUser } = useAuth();
-  const [events, setEvents] = useState<UserEvent[]>([]);
+  const [events, setEvents] = useState<EventType[]>([]);
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [eventType, setEventType] = useState("all");
-  const [eventTypes, setEventTypes] = useState<string[]>([]);
-  const userEventsService = new UserEventsService();
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const workflowService = new WorkflowService();
+
+  useEffect(() => {
+    trackEvent("EventsViewed", {
+      page: "events",
+    });
+  }, []);
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const [userEvents, types] = await Promise.all([
-          userEventsService.getUserEvents(currentUser?.id),
-          userEventsService.getEventTypes(),
-        ]);
+        const userEvents = await workflowService.getUserEvents(false);
+        const uniqueUserEvents = await workflowService.getUserEvents();
         setEvents(userEvents);
-        setEventTypes(types);
+        setEventTypes(uniqueUserEvents);
       } catch (error) {
         console.error("Failed to fetch events:", error);
       } finally {
@@ -62,12 +68,11 @@ const EventsView: React.FC = () => {
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
-      event.event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      JSON.stringify(event.event_data)
+      event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      JSON.stringify(event.description)
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-    const matchesType = eventType === "all" || event.event_type === eventType;
-    return matchesSearch && matchesType;
+    return matchesSearch;
   });
 
   if (isLoading) {
@@ -122,7 +127,7 @@ const EventsView: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{eventTypes.length}</div>
+            <div className="text-2xl font-bold">{events.length}</div>
           </CardContent>
         </Card>
 
@@ -156,15 +161,18 @@ const EventsView: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Select value={eventType} onValueChange={setEventType}>
+              <Select
+                value={selectedEventId}
+                onValueChange={setSelectedEventId}
+              >
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Event Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
-                  {eventTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type
+                  {events.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name
                         .replace(/_/g, " ")
                         .replace(/\b\w/g, (l) => l.toUpperCase())}
                     </SelectItem>
@@ -192,11 +200,11 @@ const EventsView: React.FC = () => {
               {filteredEvents.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell>
-                    <Badge variant="outline">{event.event_type}</Badge>
+                    <Badge variant="outline">{event.name}</Badge>
                   </TableCell>
                   <TableCell>
                     <pre className="text-xs whitespace-pre-wrap">
-                      {JSON.stringify(event.event_data, null, 2)}
+                      {JSON.stringify(event.description, null, 2)}
                     </pre>
                   </TableCell>
                   <TableCell>{currentUser?.id}</TableCell>

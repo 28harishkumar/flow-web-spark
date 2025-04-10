@@ -226,7 +226,7 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
                         <Settings className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-6xl h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-6xl h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Configure Template</DialogTitle>
                       </DialogHeader>

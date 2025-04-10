@@ -89,13 +89,17 @@ export class WorkflowService extends ApiService {
     return this.request<{ success: boolean }>("DELETE", `/workflow/${id}/`);
   }
 
-  async getEventTypes(): Promise<EventType[]> {
+  async getUserEvents(unique = true): Promise<EventType[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return this.request<any[]>("GET", "/user-events/events/list/").then((res) =>
+    return this.request<any[]>(
+      "GET",
+      `/user-events/events/list/?unique_type=${unique}`
+    ).then((res) =>
       res.map((event) => ({
         id: event.id,
         name: event.event_type,
         description: event.event_data?.type,
+        created_at: event.created_at,
       }))
     );
   }

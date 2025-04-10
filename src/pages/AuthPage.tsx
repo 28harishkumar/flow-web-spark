@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { AuthService, AuthError } from "@/services/auth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { trackEvent } from "@/lib/tracking";
 
 const AuthPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +24,12 @@ const AuthPage: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  useEffect(() => {
+    trackEvent("AuthScreenViewed", {
+      page: "auth",
+    });
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

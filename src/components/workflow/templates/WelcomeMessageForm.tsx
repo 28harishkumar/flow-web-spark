@@ -1,0 +1,61 @@
+import React from "react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { WebMessage } from "@/types/workflow";
+
+interface WelcomeMessageFormProps {
+  template: WebMessage;
+  onConfigChange: (key: string, value: unknown) => void;
+}
+
+export const WelcomeMessageForm: React.FC<WelcomeMessageFormProps> = ({
+  template,
+  onConfigChange,
+}) => {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <div>
+          <Label>Title</Label>
+          <Input
+            value={template.template_config?.title || ""}
+            onChange={(e) => onConfigChange("title", e.target.value)}
+            placeholder="Enter welcome title"
+          />
+        </div>
+        <div>
+          <Label>Message</Label>
+          <Input
+            value={template.template_config?.message || ""}
+            onChange={(e) => onConfigChange("message", e.target.value)}
+            placeholder="Enter welcome message"
+          />
+        </div>
+        <div>
+          <Label>Button Text</Label>
+          <Input
+            value={template.template_config?.button_text || ""}
+            onChange={(e) => onConfigChange("button_text", e.target.value)}
+            placeholder="Enter button text"
+          />
+        </div>
+        <div>
+          <Label>Button URL</Label>
+          <Input
+            value={template.template_config?.button_url || ""}
+            onChange={(e) => onConfigChange("button_url", e.target.value)}
+            placeholder="Enter button URL"
+          />
+        </div>
+        <div>
+          <Label>Image URL</Label>
+          <Input
+            value={template.template_config?.image_url || ""}
+            onChange={(e) => onConfigChange("image_url", e.target.value)}
+            placeholder="Enter image URL"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};

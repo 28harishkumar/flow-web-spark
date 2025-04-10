@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { JsonWorkflow } from "@/types/workflow";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { trackEvent } from "@/lib/tracking";
 
 const Dashboard: React.FC = () => {
   const { currentUser: user, logout: onLogout } = useAuth();
@@ -23,6 +24,12 @@ const Dashboard: React.FC = () => {
   const navigateToEditor = (workflowId: string) => {
     navigate(`/dashboard/workflows/${workflowId}`);
   };
+
+  useEffect(() => {
+    trackEvent("DashboardViewed", {
+      page: "dashboard",
+    });
+  }, []);
 
   const handleCreateWorkflow = () => {
     const newWorkflow: JsonWorkflow = {

@@ -42,6 +42,7 @@ import ActionConfig from "@/components/workflow/ActionConfig";
 import TemplateConfig from "@/components/workflow/TemplateConfig";
 
 import { EventType, ActionType } from "@/types/workflow";
+import { trackEvent } from "@/lib/tracking";
 
 const getInitialNodes = () => [
   {
@@ -110,6 +111,12 @@ const WorkflowEditor: React.FC = () => {
   );
 
   useEffect(() => {
+    trackEvent("WorkflowEditorViewed", {
+      page: "workflow_editor",
+    });
+  }, []);
+
+  useEffect(() => {
     if (workflowId) {
       workflowService.getWorkflow(workflowId).then((workflow) => {
         const canvasWorkflow = jsonToCanvasWorkflow(workflow);
@@ -122,7 +129,7 @@ const WorkflowEditor: React.FC = () => {
         setWorkflowDescription(workflow.description);
       });
 
-      workflowService.getEventTypes().then((eventTypes) => {
+      workflowService.getUserEvents().then((eventTypes) => {
         setEventTypes(eventTypes);
       });
 
@@ -147,12 +154,13 @@ const WorkflowEditor: React.FC = () => {
       console.log("newEdge", newEdge, nodes);
 
       const node = nodes.find((node) => node.id === params.target);
-
       if (node) {
         const event = canvasToJsonNode(node, edges, actions);
 
         if (node && event.parent_id !== params.source) {
           event.parent_id = params.source;
+          setEdges((eds) => eds.filter((e) => e.target !== params.target));
+
           workflowService.updateEvent(event, workflowId, node.id).then((ev) => {
             setNodes((nodes) => [
               ...nodes.filter((n) => n.id !== ev.id),
@@ -166,16 +174,9 @@ const WorkflowEditor: React.FC = () => {
     [setEdges]
   );
 
-  const addNode = (nodeType: "event" | "action", typeId: string) => {
-    const typeName =
-      nodeType === "event"
-        ? eventTypes.find((et) => et.id === typeId)?.name
-        : actionTypes.find((at) => at.id === typeId)?.name;
-
-    const description =
-      nodeType === "event"
-        ? eventTypes.find((et) => et.id === typeId)?.description
-        : actionTypes.find((at) => at.id === typeId)?.description;
+  const addNode = (eventType: EventType) => {
+    const typeName = eventType.name;
+    const description = eventType.description;
 
     let posX = 250;
     let posY = 150;
@@ -194,13 +195,13 @@ const WorkflowEditor: React.FC = () => {
     }
 
     const newNode = {
-      id: `${nodeType}-${Date.now()}`,
-      type: nodeType,
+      id: `event-${Date.now()}`,
+      type: typeName,
       position: { x: posX, y: posY },
       data: {
         label: typeName,
         description: description,
-        type: typeId,
+        type: typeName,
         properties: {},
       },
     };
@@ -216,9 +217,9 @@ const WorkflowEditor: React.FC = () => {
 
       if (selectedNodeId) {
         const newEdge = {
-          id: `e${selectedNodeId}-${newNode.id}`,
+          id: `e${selectedNodeId}-${event.id}`,
           source: selectedNodeId,
-          target: newNode.id,
+          target: event.id,
           type: "smoothstep",
           markerEnd: {
             type: MarkerType.ArrowClosed,
@@ -227,7 +228,7 @@ const WorkflowEditor: React.FC = () => {
         setEdges((edges) => [...edges, newEdge]);
       }
 
-      setSelectedNodeId(newNode.id);
+      setSelectedNodeId(event.id);
     });
   };
 
@@ -431,6 +432,16 @@ const WorkflowEditor: React.FC = () => {
 
               <TabsContent value="workflow" className="space-y-4 mt-4">
                 <div className="space-y-2">
+                  <Label htmlFor="workflow-name">Workflow Name</Label>
+                  <Textarea
+                    id="workflow-name"
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                    rows={1}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="workflow-description">Description</Label>
                   <Textarea
                     id="workflow-description"
@@ -456,7 +467,7 @@ const WorkflowEditor: React.FC = () => {
                             variant="outline"
                             size="sm"
                             className="w-full justify-start text-left h-auto py-2"
-                            onClick={() => addNode("event", eventType.id)}
+                            onClick={() => addNode(eventType)}
                           >
                             <div>
                               <p>{eventType.name}</p>

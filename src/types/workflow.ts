@@ -173,6 +173,7 @@ export interface EventType {
   id: string;
   name: string;
   description: string;
+  created_at?: string;
 }
 
 export interface ActionType {

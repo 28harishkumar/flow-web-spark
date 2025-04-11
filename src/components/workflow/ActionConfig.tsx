@@ -56,12 +56,23 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
   const [editedAction, setEditedAction] = useState<WebAction>(action);
   const [templates, setTemplates] = useState<TemplateListType[]>([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
+  const [showGoalDialog, setShowGoalDialog] = useState(false);
+  const [showWhoDialog, setShowWhoDialog] = useState(false);
+  const [showWhatDialog, setShowWhatDialog] = useState(false);
+  const [showWhenDialog, setShowWhenDialog] = useState(false);
+  const [events, setEvents] = useState<string[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [filterEnabled, setFilterEnabled] = useState(false);
 
   const workflowService = new WorkflowService();
 
   useEffect(() => {
     workflowService.getTemplates().then((templates) => {
       setTemplates(templates);
+    });
+    // Fetch events from API
+    workflowService.getUserEvents(true).then((fetchedEvents) => {
+      setEvents(fetchedEvents.map((event) => event.name));
     });
   }, []);
 
@@ -164,52 +175,296 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
           <div className="p-0">
             <div className="p-2 flex justify-between items-center flex-row">
               <p className="text-md font-medium">Goal</p>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowGoalDialog(true)}
+              >
                 <Edit2 className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-2">
-              <div className="space-y-2"></div>
-            </div>
+            <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Set a Goal</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Label className="flex items-center gap-2">
+                    <Input
+                      type="checkbox"
+                      checked={editedAction.conversion_tracking || false}
+                      className="h-4 w-4"
+                      onChange={(e) =>
+                        setEditedAction({
+                          ...editedAction,
+                          conversion_tracking: e.target.checked,
+                        })
+                      }
+                    />
+                    Conversion Tracking
+                  </Label>
+
+                  <div>
+                    <Label>Conversion Time</Label>
+                    <Select
+                      value={editedAction.conversion_time || ""}
+                      onValueChange={(value) =>
+                        setEditedAction({
+                          ...editedAction,
+                          conversion_time: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select conversion time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4 Hours">4 Hours</SelectItem>
+                        <SelectItem value="8 Hours">8 Hours</SelectItem>
+                        <SelectItem value="12 Hours">12 Hours</SelectItem>
+                        <SelectItem value="1 Day">1 Day</SelectItem>
+                        <SelectItem value="2 Days">2 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Revenue Property</Label>
+                    <Select
+                      value={editedAction.revenue_property || ""}
+                      onValueChange={(value) =>
+                        setEditedAction({
+                          ...editedAction,
+                          revenue_property: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select revenue property" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="currency_amount">
+                          currency_amount
+                        </SelectItem>
+                        <SelectItem value="total_value">total_value</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={() => setShowGoalDialog(false)}>Save</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         <div className="space-y-4 border-t">
           <div className="p-0">
             <div className="p-2 flex justify-between items-center flex-row">
               <p className="text-md font-medium">Who</p>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWhoDialog(true)}
+              >
                 <Edit2 className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-2">
-              <div className="space-y-2"></div>
-            </div>
+            <Dialog open={showWhoDialog} onOpenChange={setShowWhoDialog}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Target Segment</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Label>Select Event</Label>
+                  <Select
+                    value={selectedEvent || ""}
+                    onValueChange={setSelectedEvent}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pick an event" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event, index) => (
+                        <SelectItem key={index} value={event}>
+                          {event}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedEvent && (
+                    <div className="space-y-4">
+                      <p>{selectedEvent}</p>
+                      <Label className="flex items-center gap-2">
+                        <Input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={filterEnabled}
+                          onChange={(e) => setFilterEnabled(e.target.checked)}
+                        />
+                        Filter on past behavior and user properties
+                      </Label>
+                      {filterEnabled && (
+                        <div className="space-y-4">
+                          <div>
+                            <p>Who have done</p>
+                            <Button variant="ghost" size="sm">
+                              + Add an event...
+                            </Button>
+                          </div>
+                          <div>
+                            <p>Who have not done</p>
+                            <Button variant="ghost" size="sm">
+                              + Add an event...
+                            </Button>
+                          </div>
+                          <div>
+                            <p>With user properties</p>
+                            <Button variant="ghost" size="sm">
+                              + Add property...
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <Button onClick={() => setShowWhoDialog(false)}>Save</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         <div className="space-y-4 border-t">
           <div className="p-0">
             <div className="p-2 flex justify-between items-center flex-row">
               <p className="text-md font-medium">What</p>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWhatDialog(true)}
+              >
                 <Edit2 className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-2">
-              <div className="space-y-2"></div>
-            </div>
+            <Dialog open={showWhatDialog} onOpenChange={setShowWhatDialog}>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Template Configuration</DialogTitle>
+                </DialogHeader>
+                <TemplateConfig
+                  template={action.web_message}
+                  onUpdate={handleUpdateTemplate}
+                  onDelete={handleDeleteTemplate}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         <div className="space-y-4 border-t">
           <div className="p-0">
             <div className="p-2 flex justify-between items-center flex-row">
               <p className="text-md font-medium">When</p>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWhenDialog(true)}
+              >
                 <Edit2 className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-2">
-              <div className="space-y-2"></div>
-            </div>
+            <Dialog open={showWhenDialog} onOpenChange={setShowWhenDialog}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Date and Time</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label>Start Date and Time</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="radio"
+                      name="start"
+                      className="h-4 w-4"
+                      checked={!editedAction.start_date}
+                      onChange={() =>
+                        setEditedAction({
+                          ...editedAction,
+                          start_date: "",
+                        })
+                      }
+                    />
+                    <span>Now</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="radio"
+                      name="start"
+                      className="h-4 w-4"
+                      checked={!!editedAction.start_date}
+                      onChange={() =>
+                        setEditedAction({
+                          ...editedAction,
+                          start_date: new Date().toISOString().slice(0, 16),
+                        })
+                      }
+                    />
+                    <span>On a date/time</span>
+                    <Input
+                      type="datetime-local"
+                      className="w-60"
+                      value={editedAction.start_date || ""}
+                      onChange={(e) =>
+                        setEditedAction({
+                          ...editedAction,
+                          start_date: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label className="mt-4">End Date and Time</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="radio"
+                        name="end"
+                        className="h-4 w-4"
+                        checked={!editedAction.end_date}
+                        onChange={() =>
+                          setEditedAction({
+                            ...editedAction,
+                            end_date: "",
+                          })
+                        }
+                      />
+                      <span>Never</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="radio"
+                      name="end"
+                      className="h-4 w-4"
+                      checked={!!editedAction.end_date}
+                      onChange={() =>
+                        setEditedAction({
+                          ...editedAction,
+                          end_date: new Date().toISOString().slice(0, 16),
+                        })
+                      }
+                    />
+                    <span>On a date/time</span>
+                    <Input
+                      type="datetime-local"
+                      className="w-60"
+                      value={editedAction.end_date || ""}
+                      onChange={(e) =>
+                        setEditedAction({
+                          ...editedAction,
+                          end_date: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <Button onClick={() => setShowWhenDialog(false)}>Save</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         {isEditing ? (

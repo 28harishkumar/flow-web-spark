@@ -557,11 +557,7 @@ const WorkflowEditor: React.FC = () => {
               <TabsContent value="events" className="space-y-4 mt-4">
                 <pre className="text-xs whitespace-pre-wrap cursor-pointer hover:bg-muted p-2 rounded">
                   {selectedNode &&
-                    JSON.stringify(
-                      canvasToJsonNode(selectedNode, edges, actions),
-                      null,
-                      2
-                    )}
+                    JSON.stringify(canvasToJsonWorkflow(workflow), null, 2)}
                 </pre>
               </TabsContent>
             </Tabs>

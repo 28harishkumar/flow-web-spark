@@ -125,6 +125,11 @@ export interface WebAction {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  conversion_tracking?: boolean;
+  conversion_time?: string;
+  revenue_property?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export type EventCategory = "web" | "mobile";

@@ -1,3 +1,4 @@
+
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from "axios";
 
 interface ApiError {
@@ -9,12 +10,15 @@ interface ApiError {
 export class ApiService {
   protected client: AxiosInstance;
   protected mockEnabled: boolean;
+  protected useMockFallback: boolean;
 
   constructor() {
     const token = localStorage.getItem("user_token");
     const isLocalhost = window.location.origin.startsWith("http://localhost");
     this.mockEnabled =
       !isLocalhost || import.meta.env.VITE_APP_MOCK_ENABLED === "true";
+    this.useMockFallback = import.meta.env.VITE_USE_MOCK_FALLBACK === "true";
+    
     this.client = axios.create({
       baseURL: import.meta.env.VITE_APP_API_URL || "http://localhost:8000/api/",
       headers: {
@@ -62,11 +66,13 @@ export class ApiService {
     endpoint: string,
     data?: unknown
   ): Promise<T> {
+    // Use mock data if explicitly enabled
     if (this.mockEnabled) {
       return this.handleMockRequest<T>(method, endpoint, data);
     }
 
     try {
+      // Try real API request first
       const response = await this.client({
         method,
         url: endpoint,
@@ -74,6 +80,11 @@ export class ApiService {
       });
       return response.data;
     } catch (error) {
+      // If real API fails and mock fallback is enabled, try mock data
+      if (this.useMockFallback) {
+        console.warn("API request failed, using mock fallback data", error);
+        return this.handleMockRequest<T>(method, endpoint, data);
+      }
       throw this.handleError(error as AxiosError);
     }
   }
@@ -101,6 +112,7 @@ export class ApiService {
     data?: unknown
   ): Promise<T> {
     // Mock data handling will be implemented in respective services
+    console.log("Using mock data for:", method, endpoint, data);
     return Promise.resolve({} as T);
   }
 }

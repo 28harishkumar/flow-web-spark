@@ -22,10 +22,19 @@ export class WorkflowService extends ApiService {
 
   async listWorkflows(): Promise<JsonWorkflow[]> {
     if (this.mockEnabled) {
+      console.log("Using mock workflows:", this.mockData.workflows);
       return this.mockData.workflows;
     }
 
-    return this.request<JsonWorkflow[]>("GET", "/workflow/");
+    try {
+      return await this.request<JsonWorkflow[]>("GET", "/workflow/");
+    } catch (error) {
+      if (this.useMockFallback) {
+        console.warn("Falling back to mock workflow data");
+        return this.mockData.workflows;
+      }
+      throw error;
+    }
   }
 
   async getWorkflow(id: number | string): Promise<JsonWorkflow> {
@@ -37,7 +46,18 @@ export class WorkflowService extends ApiService {
       return workflow;
     }
 
-    return this.request<JsonWorkflow>("GET", `/workflow/${id}/`);
+    try {
+      return await this.request<JsonWorkflow>("GET", `/workflow/${id}/`);
+    } catch (error) {
+      if (this.useMockFallback) {
+        const workflow = this.mockData.workflows.find((w) => w.id === id);
+        if (!workflow) {
+          throw new Error("Workflow not found");
+        }
+        return workflow;
+      }
+      throw error;
+    }
   }
 
   async createWorkflow(
@@ -54,7 +74,21 @@ export class WorkflowService extends ApiService {
       return newWorkflow;
     }
 
-    return this.request<JsonWorkflow>("POST", "/workflow/", workflow);
+    try {
+      return await this.request<JsonWorkflow>("POST", "/workflow/", workflow);
+    } catch (error) {
+      if (this.useMockFallback) {
+        const newWorkflow: JsonWorkflow = {
+          id: (this.mockData.workflows.length + 1).toString(),
+          ...workflow,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        this.mockData.workflows.push(newWorkflow);
+        return newWorkflow;
+      }
+      throw error;
+    }
   }
 
   async updateWorkflow(
@@ -69,11 +103,28 @@ export class WorkflowService extends ApiService {
       this.mockData.workflows[index] = {
         ...this.mockData.workflows[index],
         ...workflow,
+        updated_at: new Date().toISOString(),
       };
       return this.mockData.workflows[index];
     }
 
-    return this.request<JsonWorkflow>("PUT", `/workflow/${id}/`, workflow);
+    try {
+      return await this.request<JsonWorkflow>("PUT", `/workflow/${id}/`, workflow);
+    } catch (error) {
+      if (this.useMockFallback) {
+        const index = this.mockData.workflows.findIndex((w) => w.id === id);
+        if (index === -1) {
+          throw new Error("Workflow not found");
+        }
+        this.mockData.workflows[index] = {
+          ...this.mockData.workflows[index],
+          ...workflow,
+          updated_at: new Date().toISOString(),
+        };
+        return this.mockData.workflows[index];
+      }
+      throw error;
+    }
   }
 
   async deleteWorkflow(id: string): Promise<{ success: boolean }> {
@@ -93,27 +144,84 @@ export class WorkflowService extends ApiService {
     unique = true,
     params: { page?: number; limit?: number } = {}
   ): Promise<EventType[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return this.request<any[]>(
-      "GET",
-      `/user-events/events/list/?unique_type=${unique}`,
-      params
-    ).then((res) =>
-      res.map((event) => ({
-        id: event.id,
-        name: event.event_type,
-        description: event.event_data?.type,
-        created_at: event.created_at,
-      }))
-    );
+    if (this.mockEnabled) {
+      return [
+        { id: "1", name: "user_signup", description: "User signs up" },
+        { id: "2", name: "user_login", description: "User logs in" },
+        { id: "3", name: "user_purchase", description: "User makes a purchase" },
+      ];
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return await this.request<any[]>(
+        "GET",
+        `/user-events/events/list/?unique_type=${unique}`,
+        params
+      ).then((res) =>
+        res.map((event) => ({
+          id: event.id,
+          name: event.event_type,
+          description: event.event_data?.type,
+          created_at: event.created_at,
+        }))
+      );
+    } catch (error) {
+      if (this.useMockFallback) {
+        return [
+          { id: "1", name: "user_signup", description: "User signs up" },
+          { id: "2", name: "user_login", description: "User logs in" },
+          { id: "3", name: "user_purchase", description: "User makes a purchase" },
+        ];
+      }
+      throw error;
+    }
   }
 
   async getActionTypes(): Promise<ActionType[]> {
-    return this.request<ActionType[]>("GET", "/workflow/actions/");
+    if (this.mockEnabled) {
+      return [
+        { id: "1", name: "show_message", description: "Show a message" },
+        { id: "2", name: "send_email", description: "Send an email" },
+        { id: "3", name: "update_user", description: "Update user profile" },
+      ];
+    }
+
+    try {
+      return await this.request<ActionType[]>("GET", "/workflow/actions/");
+    } catch (error) {
+      if (this.useMockFallback) {
+        return [
+          { id: "1", name: "show_message", description: "Show a message" },
+          { id: "2", name: "send_email", description: "Send an email" },
+          { id: "3", name: "update_user", description: "Update user profile" },
+        ];
+      }
+      throw error;
+    }
   }
 
   async getTemplates(): Promise<TemplateListType[]> {
-    return this.request<TemplateListType[]>("GET", "/messages/templates/");
+    if (this.mockEnabled) {
+      return [
+        { id: "1", name: "Welcome Campaign", description: "Welcome new users" },
+        { id: "2", name: "Promotional Campaign", description: "Promote products" },
+        { id: "3", name: "Feedback Campaign", description: "Get user feedback" },
+      ];
+    }
+
+    try {
+      return await this.request<TemplateListType[]>("GET", "/messages/templates/");
+    } catch (error) {
+      if (this.useMockFallback) {
+        return [
+          { id: "1", name: "Welcome Campaign", description: "Welcome new users" },
+          { id: "2", name: "Promotional Campaign", description: "Promote products" },
+          { id: "3", name: "Feedback Campaign", description: "Get user feedback" },
+        ];
+      }
+      throw error;
+    }
   }
 
   async addEvent(event: WebEvent, workflowId: string): Promise<WebEvent> {

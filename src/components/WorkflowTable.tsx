@@ -21,25 +21,33 @@ import {
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Tag } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { JsonWorkflow } from "@/types/workflow";
+import { Input } from "@/components/ui/input";
 
 interface WorkflowTableProps {
   workflows: JsonWorkflow[];
   isLoading: boolean;
+  onCreateWorkflow: () => void;
 }
 
 const ITEMS_PER_PAGE = 5;
 
-const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading }) => {
+const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading, onCreateWorkflow }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   
-  const totalPages = Math.ceil(workflows.length / ITEMS_PER_PAGE);
+  // Filter workflows based on search query
+  const filteredWorkflows = workflows.filter(workflow =>
+    workflow.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const totalPages = Math.ceil(filteredWorkflows.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, workflows.length);
-  const displayedWorkflows = workflows.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredWorkflows.length);
+  const displayedWorkflows = filteredWorkflows.slice(startIndex, endIndex);
   
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -71,6 +79,25 @@ const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading }) =
 
   return (
     <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Workflows</h2>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              type="search"
+              placeholder="Search workflows"
+              className="pl-9 w-64"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button onClick={onCreateWorkflow} className="gap-1">
+            <Plus className="h-4 w-4" /> Create
+          </Button>
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -83,11 +110,7 @@ const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading }) =
               </TableHead>
               <TableHead>Campaign Details</TableHead>
               <TableHead>Start Time</TableHead>
-              <TableHead>Sent</TableHead>
-              <TableHead>Engaged</TableHead>
-              <TableHead>Rate</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[40px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -131,30 +154,9 @@ const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading }) =
                   }) : '-'}
                 </TableCell>
                 <TableCell>
-                  {Math.floor(Math.random() * 1500) || '--'}
-                </TableCell>
-                <TableCell>
-                  {Math.floor(Math.random() * 10) || '--'}
-                </TableCell>
-                <TableCell>
-                  {(Math.random() * 0.5).toFixed(2) || '--'}
-                </TableCell>
-                <TableCell>
                   <Badge variant={workflow.is_active ? "default" : "secondary"}>
                     {workflow.is_active ? 'Completed' : 'Draft'}
                   </Badge>
-                </TableCell>
-                <TableCell className="p-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Add action menu logic here
-                    }}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -164,23 +166,10 @@ const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading }) =
 
       <div className="flex items-center justify-between mt-4">
         <div className="text-sm text-muted-foreground">
-          {startIndex + 1}-{endIndex} of {workflows.length} items
+          {filteredWorkflows.length > 0 ? `${startIndex + 1}-${endIndex} of ${filteredWorkflows.length} items` : 'No workflows found'}
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Items per page</span>
-            <select
-              className="border rounded px-2 py-1 text-sm"
-              value={ITEMS_PER_PAGE}
-              onChange={() => {}}
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="15">15</option>
-            </select>
-          </div>
-          
+        {totalPages > 0 && (
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -209,7 +198,7 @@ const WorkflowTable: React.FC<WorkflowTableProps> = ({ workflows, isLoading }) =
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </div>
+        )}
       </div>
     </div>
   );

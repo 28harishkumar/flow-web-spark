@@ -1,12 +1,11 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import EventsView from "@/components/EventsView";
 import TemplatesView from "@/components/TemplatesView";
-import { LogOut, Plus, Search, BellIcon } from "lucide-react";
+import { LogOut, BellIcon } from "lucide-react";
 import { WorkflowService } from "@/services/workflow";
 import { useAuth } from "@/context/AuthContext";
 import { JsonWorkflow } from "@/types/workflow";
@@ -66,25 +65,11 @@ const Dashboard: React.FC = () => {
         <div className="container flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-6">
             <h1 className="text-xl font-semibold">WorkflowHub</h1>
-            <div className="relative max-w-md w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input 
-                type="search" 
-                placeholder="Search" 
-                className="pl-9 bg-gray-100 border-none" 
-              />
-            </div>
           </div>
 
           <div className="flex items-center gap-4">
             <Button variant="outline" className="gap-1">
               <BellIcon className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" className="gap-1">
-              Subscribe to Reports
-            </Button>
-            <Button onClick={handleCreateWorkflow} className="gap-1">
-              <Plus className="h-4 w-4" /> Campaign
             </Button>
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
@@ -104,10 +89,6 @@ const Dashboard: React.FC = () => {
 
       <main className="flex-1">
         <div className="container mx-auto max-w-7xl py-8 px-4">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Dashboard</h2>
-          </div>
-
           <PromptInput onSubmit={handlePromptSubmit} />
 
           <Tabs defaultValue="workflows" className="mt-8">
@@ -118,7 +99,11 @@ const Dashboard: React.FC = () => {
             </TabsList>
 
             <TabsContent value="workflows">
-              <WorkflowTable workflows={workflows} isLoading={isLoading} />
+              <WorkflowTable 
+                workflows={workflows} 
+                isLoading={isLoading} 
+                onCreateWorkflow={handleCreateWorkflow}
+              />
             </TabsContent>
 
             <TabsContent value="events">

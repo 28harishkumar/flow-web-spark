@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { WebAction } from "@/types/workflow";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parse } from "date-fns";
+import { format } from "date-fns";
 import { CalendarIcon, Clock, HelpCircle, Plus, X } from "lucide-react";
 import {
   Select,
@@ -60,7 +60,7 @@ const WhenDialog: React.FC<WhenDialogProps> = ({
     return { 
       ...action,
       delivery_preferences: action.delivery_preferences || {
-        priority: "low",
+        priority: "low" as "low" | "medium" | "high" | "critical",
         days: [],
         startTime: "09:00",
         endTime: "17:00",
@@ -390,7 +390,7 @@ const WhenDialog: React.FC<WhenDialogProps> = ({
                     </div>
                     <Select 
                       value={editedAction.delivery_preferences?.priority || "low"}
-                      onValueChange={(value) => 
+                      onValueChange={(value: "low" | "medium" | "high" | "critical") => 
                         setEditedAction({
                           ...editedAction,
                           delivery_preferences: {

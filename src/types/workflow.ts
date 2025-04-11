@@ -11,8 +11,8 @@ export interface Node {
     label: string;
     description?: string;
     type: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     properties: Record<string, any>;
+    eventProperties?: Record<string, any>;
   };
 }
 
@@ -40,7 +40,6 @@ export interface TemplateConfig {
   image_url?: string;
   button_text?: string;
   button_url?: string;
-  // Feedback Campaign
   rating_options?: Array<{
     value: number;
     label: string;
@@ -48,7 +47,6 @@ export interface TemplateConfig {
   onRatingSelect?: (value: number) => void;
   show_comment_box?: boolean;
   comment_placeholder?: string;
-  // Survey Campaign
   questions?: Array<{
     id: string;
     text: string;
@@ -57,13 +55,11 @@ export interface TemplateConfig {
     min?: number;
     max?: number;
   }>;
-  // Newsletter Campaign
   email_placeholder?: string;
   show_name_field?: boolean;
   name_placeholder?: string;
   show_consent_checkbox?: boolean;
   consent_text?: string;
-  // Social Sharing Campaign
   social_platforms?: Array<{
     name: string;
     icon: string;
@@ -71,22 +67,18 @@ export interface TemplateConfig {
   }>;
   show_copy_link?: boolean;
   share_url?: string;
-  // Countdown Campaign
   end_date?: string;
-  // Feature Announcement
   features?: Array<{
     title: string;
     description: string;
     icon: string;
   }>;
-  // Special Offer
   pricing?: {
     amount: number;
     currency: string;
     period: string;
   };
   countdown_end?: string;
-  // Common
   preferences?: string[];
   benefits?: string[];
   platforms?: string[];
@@ -149,6 +141,7 @@ export interface WebEvent {
   position_y?: number;
   created_at: string;
   updated_at: string;
+  properties?: Record<string, any>;
 }
 
 export interface JsonWorkflow {

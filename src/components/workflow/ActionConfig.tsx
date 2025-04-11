@@ -152,6 +152,27 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
     }
   };
 
+  const getRevenuePropertyOptions = () => {
+    const eventProps = node.data.eventProperties || {};
+    const propertyOptions = Object.keys(eventProps);
+    
+    if (propertyOptions.length === 0) {
+      return [
+        { value: "currency_amount", label: "currency_amount" },
+        { value: "total_value", label: "total_value" }
+      ];
+    }
+    
+    return propertyOptions.map(prop => ({
+      value: prop,
+      label: prop
+    }));
+  };
+
+  const getConversionEventName = () => {
+    return node.data.label || node.data.type || "unknown event";
+  };
+
   return (
     <Card className="mb-4">
       <CardHeader className="p-2">
@@ -183,6 +204,26 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
                 <Edit2 className="h-4 w-4" />
               </Button>
             </div>
+            {action.conversion_tracking && (
+              <div className="px-2 py-1 space-y-2 text-sm">
+                <div>
+                  <p className="font-medium">Conversion Event</p>
+                  <p className="text-muted-foreground">{getConversionEventName()}</p>
+                </div>
+                {action.conversion_time && (
+                  <div>
+                    <p className="font-medium">Conversion Time</p>
+                    <p className="text-muted-foreground">{action.conversion_time}</p>
+                  </div>
+                )}
+                {action.revenue_property && (
+                  <div>
+                    <p className="font-medium">Revenue property</p>
+                    <p className="text-muted-foreground">{action.revenue_property}</p>
+                  </div>
+                )}
+              </div>
+            )}
             <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
@@ -204,51 +245,56 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
                     Conversion Tracking
                   </Label>
 
-                  <div>
-                    <Label>Conversion Time</Label>
-                    <Select
-                      value={editedAction.conversion_time || ""}
-                      onValueChange={(value) =>
-                        setEditedAction({
-                          ...editedAction,
-                          conversion_time: value,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select conversion time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="4 Hours">4 Hours</SelectItem>
-                        <SelectItem value="8 Hours">8 Hours</SelectItem>
-                        <SelectItem value="12 Hours">12 Hours</SelectItem>
-                        <SelectItem value="1 Day">1 Day</SelectItem>
-                        <SelectItem value="2 Days">2 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Revenue Property</Label>
-                    <Select
-                      value={editedAction.revenue_property || ""}
-                      onValueChange={(value) =>
-                        setEditedAction({
-                          ...editedAction,
-                          revenue_property: value,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select revenue property" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="currency_amount">
-                          currency_amount
-                        </SelectItem>
-                        <SelectItem value="total_value">total_value</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {editedAction.conversion_tracking && (
+                    <>
+                      <div>
+                        <Label>Conversion Time</Label>
+                        <Select
+                          value={editedAction.conversion_time || ""}
+                          onValueChange={(value) =>
+                            setEditedAction({
+                              ...editedAction,
+                              conversion_time: value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select conversion time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="4 Hours">4 Hours</SelectItem>
+                            <SelectItem value="8 Hours">8 Hours</SelectItem>
+                            <SelectItem value="12 Hours">12 Hours</SelectItem>
+                            <SelectItem value="1 Day">1 Day</SelectItem>
+                            <SelectItem value="2 Days">2 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Revenue Property</Label>
+                        <Select
+                          value={editedAction.revenue_property || ""}
+                          onValueChange={(value) =>
+                            setEditedAction({
+                              ...editedAction,
+                              revenue_property: value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select revenue property" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getRevenuePropertyOptions().map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
                   <Button onClick={() => setShowGoalDialog(false)}>Save</Button>
                 </div>
               </DialogContent>

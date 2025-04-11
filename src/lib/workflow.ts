@@ -15,7 +15,6 @@ const yGap = 150;
 
 export const setSubordinates = (event: WebEvent): WebEvent => {
   const processNode = (node: WebEvent): WebEvent => {
-    // Count all descendants (children + their children)
     const countChildren = (n: WebEvent): number => {
       if (!n.children || n.children.length === 0) return 0;
       return (
@@ -24,7 +23,6 @@ export const setSubordinates = (event: WebEvent): WebEvent => {
       );
     };
 
-    // Recursively process children first (post-order traversal)
     const processedChildren = node.children?.map(processNode) || [];
 
     return {
@@ -59,6 +57,7 @@ export const serializerEvents = (
           parent: event.parent,
           actions: event.actions?.map((action) => action.id),
         },
+        eventProperties: event.properties || {},
       },
     },
   ];
@@ -141,18 +140,14 @@ export const jsonToCanvasWorkflow = (
 export const canvasToJsonWorkflow = (
   canvasWorkflow: CanvasWorkflow
 ): JsonWorkflow => {
-  // Reconstruct the WebEvent hierarchy from nodes and edges
   const buildEventTree = (nodeId: string): WebEvent => {
     const node = canvasWorkflow.nodes.find((n) => n.id === nodeId);
     if (!node) throw new Error(`Node ${nodeId} not found`);
 
-    // Find all child edges (where this node is the source)
     const childEdges = canvasWorkflow.edges.filter((e) => e.source === nodeId);
 
-    // Recursively build children
     const children = childEdges.map((edge) => buildEventTree(edge.target));
 
-    // Find associated actions
     const actionIds = node.data.properties?.actions || [];
     const actions = canvasWorkflow.actions.filter((a) =>
       actionIds.includes(a.id)
@@ -171,28 +166,25 @@ export const canvasToJsonWorkflow = (
       updated_at: node.data.properties.updated_at || canvasWorkflow.updated_at,
       position_x: node.position?.x,
       position_y: node.position?.y,
-      // These will be recalculated when setSubordinates is called
       subordinates: 0,
     };
   };
 
-  // Find root nodes (nodes that aren't targets of any edges)
   const rootNodes = canvasWorkflow.nodes.filter(
     (node) => !canvasWorkflow.edges.some((edge) => edge.target === node.id)
   );
 
-  // Build the event tree for each root node
   const events = rootNodes.map((rootNode) => {
     const event = buildEventTree(rootNode.id);
-    return setSubordinates(event); // Recalculate subordinates
+    return setSubordinates(event);
   });
 
   return {
     id: canvasWorkflow.id,
     name: canvasWorkflow.name,
     description: canvasWorkflow.description,
-    live_status: false, // Default value
-    is_active: true, // Default value
+    live_status: false,
+    is_active: true,
     events,
     created_at: canvasWorkflow.created_at,
     updated_at: canvasWorkflow.updated_at,
@@ -224,6 +216,7 @@ export const canvasToJsonNode = (
     position_x: node.position?.x,
     position_y: node.position?.y,
     category: node.data.properties.category || ("web" as EventCategory),
+    properties: node.data.eventProperties || {},
   };
 };
 

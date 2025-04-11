@@ -1,45 +1,21 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  CanvasWorkflow,
-  TemplateListType,
-  WebAction,
-  WebEvent,
-  WebMessage,
-  Node,
-} from "@/types/workflow";
+import { WebAction, Node } from "@/types/workflow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Save, Settings } from "lucide-react";
-import TemplateConfig from "./TemplateConfig";
-import { WorkflowService } from "@/services/workflow";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { createSlug } from "@/lib/utils";
+import { Trash2, Edit2, Save } from "lucide-react";
 import { Editor } from "@monaco-editor/react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@radix-ui/react-accordion";
+import GoalSection from "./action-sections/GoalSection";
+import WhoSection from "./action-sections/WhoSection";
+import WhatSection from "./action-sections/WhatSection";
+import WhenSection from "./action-sections/WhenSection";
+import TemplateSection from "./action-sections/TemplateSection";
 
 interface ActionConfigProps {
   action: WebAction;
-  workflow: CanvasWorkflow;
+  workflow: any;
   node: Node;
   onUpdate: (action: WebAction) => void;
   onDelete: (actionId: string) => void;
@@ -54,123 +30,10 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedAction, setEditedAction] = useState<WebAction>(action);
-  const [templates, setTemplates] = useState<TemplateListType[]>([]);
-  const [showTemplateConfig, setShowTemplateConfig] = useState(false);
-  const [showGoalDialog, setShowGoalDialog] = useState(false);
-  const [showWhoDialog, setShowWhoDialog] = useState(false);
-  const [showWhatDialog, setShowWhatDialog] = useState(false);
-  const [showWhenDialog, setShowWhenDialog] = useState(false);
-  const [events, setEvents] = useState<string[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [filterEnabled, setFilterEnabled] = useState(false);
-
-  const workflowService = new WorkflowService();
-
-  useEffect(() => {
-    workflowService.getTemplates().then((templates) => {
-      setTemplates(templates);
-    });
-    // Fetch events from API
-    workflowService.getUserEvents(true).then((fetchedEvents) => {
-      setEvents(fetchedEvents.map((event) => event.name));
-    });
-  }, []);
 
   const handleSave = () => {
     onUpdate(editedAction);
     setIsEditing(false);
-  };
-
-  const handleTemplateSelect = async (templateId: string) => {
-    const selectedTemplate = templates.find((t) => t.id === templateId);
-    if (!selectedTemplate) return;
-
-    if (!action.web_message) {
-      // Create new web message
-      const newWebMessage: Partial<WebMessage> = {
-        title: selectedTemplate.name,
-        message: selectedTemplate.description,
-        message_type: "info",
-        display_duration: 5000,
-        template_name: selectedTemplate.id,
-        template_config: {},
-        position: "bottom-right",
-        theme: "custom",
-        custom_theme: {
-          background: "#ffffff",
-          text: "#333333",
-          primary: "#007bff",
-          secondary: "#6c757d",
-        },
-        is_active: true,
-      };
-
-      try {
-        const message = await workflowService.addWebMessage(newWebMessage);
-        action.web_message_id = message.id;
-        onUpdate(action);
-        setShowTemplateConfig(true);
-      } catch (error) {
-        console.error("Failed to add template:", error);
-      }
-    } else {
-      // Update existing web message
-      action.web_message.template_name = selectedTemplate.name;
-      try {
-        await workflowService.updateWebMessage({
-          ...action.web_message,
-          template_name: selectedTemplate.id,
-        });
-        onUpdate(action);
-        setShowTemplateConfig(true);
-      } catch (error) {
-        console.error("Failed to update template:", error);
-      }
-    }
-  };
-
-  const handleUpdateTemplate = async (template: WebMessage) => {
-    try {
-      await workflowService.updateWebMessage({
-        ...template,
-        template_name: template.template_name.toLowerCase().replace(" ", "_"),
-      });
-      action.web_message = template;
-      onUpdate(action);
-    } catch (error) {
-      console.error("Failed to update template:", error);
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    try {
-      await workflowService.deleteWebMessage(templateId);
-      action.web_message = null;
-      onUpdate(action);
-    } catch (error) {
-      console.error("Failed to delete template:", error);
-    }
-  };
-
-  const getRevenuePropertyOptions = () => {
-    const eventProps = node.data.eventProperties || {};
-    const propertyOptions = Object.keys(eventProps);
-    
-    if (propertyOptions.length === 0) {
-      return [
-        { value: "currency_amount", label: "currency_amount" },
-        { value: "total_value", label: "total_value" }
-      ];
-    }
-    
-    return propertyOptions.map(prop => ({
-      value: prop,
-      label: prop
-    }));
-  };
-
-  const getConversionEventName = () => {
-    return node.data.label || node.data.type || "unknown event";
   };
 
   return (
@@ -181,11 +44,20 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
             {action.action_type}
           </CardTitle>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(action.id)}
-            >
+            {isEditing ? (
+              <Button variant="ghost" size="sm" onClick={handleSave}>
+                <Save className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => onDelete(action.id)}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -193,328 +65,36 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
       </CardHeader>
       <CardContent className="p-2 border-t">
         <div className="space-y-4">
-          <div className="p-0">
-            <div className="p-2 flex justify-between items-center flex-row">
-              <p className="text-md font-medium">Goal</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowGoalDialog(true)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </div>
-            {action.conversion_tracking && (
-              <div className="px-2 py-1 space-y-2 text-sm">
-                <div>
-                  <p className="font-medium">Conversion Event</p>
-                  <p className="text-muted-foreground">{getConversionEventName()}</p>
-                </div>
-                {action.conversion_time && (
-                  <div>
-                    <p className="font-medium">Conversion Time</p>
-                    <p className="text-muted-foreground">{action.conversion_time}</p>
-                  </div>
-                )}
-                {action.revenue_property && (
-                  <div>
-                    <p className="font-medium">Revenue property</p>
-                    <p className="text-muted-foreground">{action.revenue_property}</p>
-                  </div>
-                )}
-              </div>
-            )}
-            <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Set a Goal</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Label className="flex items-center gap-2">
-                    <Input
-                      type="checkbox"
-                      checked={editedAction.conversion_tracking || false}
-                      className="h-4 w-4"
-                      onChange={(e) =>
-                        setEditedAction({
-                          ...editedAction,
-                          conversion_tracking: e.target.checked,
-                        })
-                      }
-                    />
-                    Conversion Tracking
-                  </Label>
-
-                  {editedAction.conversion_tracking && (
-                    <>
-                      <div>
-                        <Label>Conversion Time</Label>
-                        <Select
-                          value={editedAction.conversion_time || ""}
-                          onValueChange={(value) =>
-                            setEditedAction({
-                              ...editedAction,
-                              conversion_time: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select conversion time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="4 Hours">4 Hours</SelectItem>
-                            <SelectItem value="8 Hours">8 Hours</SelectItem>
-                            <SelectItem value="12 Hours">12 Hours</SelectItem>
-                            <SelectItem value="1 Day">1 Day</SelectItem>
-                            <SelectItem value="2 Days">2 Days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Revenue Property</Label>
-                        <Select
-                          value={editedAction.revenue_property || ""}
-                          onValueChange={(value) =>
-                            setEditedAction({
-                              ...editedAction,
-                              revenue_property: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select revenue property" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getRevenuePropertyOptions().map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
-                  <Button onClick={() => setShowGoalDialog(false)}>Save</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <GoalSection 
+            action={action} 
+            node={node} 
+            onUpdate={onUpdate} 
+          />
         </div>
+        
         <div className="space-y-4 border-t">
-          <div className="p-0">
-            <div className="p-2 flex justify-between items-center flex-row">
-              <p className="text-md font-medium">Who</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowWhoDialog(true)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <Dialog open={showWhoDialog} onOpenChange={setShowWhoDialog}>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Target Segment</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Label>Select Event</Label>
-                  <Select
-                    value={selectedEvent || ""}
-                    onValueChange={setSelectedEvent}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pick an event" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {events.map((event, index) => (
-                        <SelectItem key={index} value={event}>
-                          {event}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedEvent && (
-                    <div className="space-y-4">
-                      <p>{selectedEvent}</p>
-                      <Label className="flex items-center gap-2">
-                        <Input
-                          type="checkbox"
-                          className="h-4 w-4"
-                          checked={filterEnabled}
-                          onChange={(e) => setFilterEnabled(e.target.checked)}
-                        />
-                        Filter on past behavior and user properties
-                      </Label>
-                      {filterEnabled && (
-                        <div className="space-y-4">
-                          <div>
-                            <p>Who have done</p>
-                            <Button variant="ghost" size="sm">
-                              + Add an event...
-                            </Button>
-                          </div>
-                          <div>
-                            <p>Who have not done</p>
-                            <Button variant="ghost" size="sm">
-                              + Add an event...
-                            </Button>
-                          </div>
-                          <div>
-                            <p>With user properties</p>
-                            <Button variant="ghost" size="sm">
-                              + Add property...
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <Button onClick={() => setShowWhoDialog(false)}>Save</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <WhoSection 
+            action={action}
+            onUpdate={onUpdate}
+          />
         </div>
+        
         <div className="space-y-4 border-t">
-          <div className="p-0">
-            <div className="p-2 flex justify-between items-center flex-row">
-              <p className="text-md font-medium">What</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowWhatDialog(true)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <Dialog open={showWhatDialog} onOpenChange={setShowWhatDialog}>
-              <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle>Template Configuration</DialogTitle>
-                </DialogHeader>
-                <TemplateConfig
-                  template={action.web_message}
-                  onUpdate={handleUpdateTemplate}
-                  onDelete={handleDeleteTemplate}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
+          <WhatSection 
+            action={action}
+            onUpdate={onUpdate}
+          />
         </div>
+        
         <div className="space-y-4 border-t">
-          <div className="p-0">
-            <div className="p-2 flex justify-between items-center flex-row">
-              <p className="text-md font-medium">When</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowWhenDialog(true)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <Dialog open={showWhenDialog} onOpenChange={setShowWhenDialog}>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Date and Time</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-2">
-                  <Label>Start Date and Time</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="radio"
-                      name="start"
-                      className="h-4 w-4"
-                      checked={!editedAction.start_date}
-                      onChange={() =>
-                        setEditedAction({
-                          ...editedAction,
-                          start_date: "",
-                        })
-                      }
-                    />
-                    <span>Now</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="radio"
-                      name="start"
-                      className="h-4 w-4"
-                      checked={!!editedAction.start_date}
-                      onChange={() =>
-                        setEditedAction({
-                          ...editedAction,
-                          start_date: new Date().toISOString().slice(0, 16),
-                        })
-                      }
-                    />
-                    <span>On a date/time</span>
-                    <Input
-                      type="datetime-local"
-                      className="w-60"
-                      value={editedAction.start_date || ""}
-                      onChange={(e) =>
-                        setEditedAction({
-                          ...editedAction,
-                          start_date: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label className="mt-4">End Date and Time</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="radio"
-                        name="end"
-                        className="h-4 w-4"
-                        checked={!editedAction.end_date}
-                        onChange={() =>
-                          setEditedAction({
-                            ...editedAction,
-                            end_date: "",
-                          })
-                        }
-                      />
-                      <span>Never</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="radio"
-                      name="end"
-                      className="h-4 w-4"
-                      checked={!!editedAction.end_date}
-                      onChange={() =>
-                        setEditedAction({
-                          ...editedAction,
-                          end_date: new Date().toISOString().slice(0, 16),
-                        })
-                      }
-                    />
-                    <span>On a date/time</span>
-                    <Input
-                      type="datetime-local"
-                      className="w-60"
-                      value={editedAction.end_date || ""}
-                      onChange={(e) =>
-                        setEditedAction({
-                          ...editedAction,
-                          end_date: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <Button onClick={() => setShowWhenDialog(false)}>Save</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <WhenSection 
+            action={action}
+            onUpdate={onUpdate}
+          />
         </div>
+        
         {isEditing ? (
-          <div className="space-y-2">
+          <div className="space-y-2 border-t pt-2">
             <div>
               <Label>Delay (seconds)</Label>
               <Input
@@ -559,49 +139,16 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
             </div>
             <div>
               <Label>Template</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={createSlug(action.web_message?.template_name || "")}
-                  onValueChange={handleTemplateSelect}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {action.web_message && (
-                  <Dialog
-                    open={showTemplateConfig}
-                    onOpenChange={setShowTemplateConfig}
-                  >
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-6xl h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Configure Template</DialogTitle>
-                      </DialogHeader>
-                      <TemplateConfig
-                        template={action.web_message}
-                        onUpdate={handleUpdateTemplate}
-                        onDelete={handleDeleteTemplate}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
+              <TemplateSection 
+                action={editedAction}
+                onUpdate={(updatedAction) => {
+                  setEditedAction(updatedAction);
+                }}
+              />
             </div>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1 border-t pt-2">
             <p className="text-sm">
               Delay: {action.delay_seconds || 0} seconds
             </p>
@@ -614,15 +161,6 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
                 <p className="text-sm">
                   Template: {action.web_message.template_name}
                 </p>
-                {isEditing && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowTemplateConfig(true)}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                )}
               </div>
             )}
           </div>

@@ -1,3 +1,4 @@
+
 import { MarkerType } from "@xyflow/react";
 
 export interface Node {
@@ -106,6 +107,28 @@ export interface WebMessage {
   updated_at: string;
 }
 
+export interface FilterConditions {
+  hasDone?: Array<{
+    event: string;
+    count?: number;
+    timeframe?: string;
+  }>;
+  hasNotDone?: Array<{
+    event: string;
+    timeframe?: string;
+  }>;
+  userProperties?: Array<{
+    property: string;
+    operator: string;
+    value: string | number | boolean;
+  }>;
+}
+
+export interface TargetSegment {
+  triggerEvent?: string;
+  filterConditions?: FilterConditions;
+}
+
 export interface WebAction {
   id: string;
   action_type: string;
@@ -122,6 +145,7 @@ export interface WebAction {
   revenue_property?: string;
   start_date?: string;
   end_date?: string;
+  targetSegment?: TargetSegment;
 }
 
 export type EventCategory = "web" | "mobile";

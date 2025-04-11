@@ -60,21 +60,21 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="border-b bg-white py-3 px-4 sticky top-0 z-10">
+    <div className="flex flex-col min-h-screen bg-background">
+      <header className="border-b py-3 px-4 sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
         <div className="container flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-6">
-            <h1 className="text-xl font-semibold">WorkflowHub</h1>
+            <h1 className="text-xl font-semibold text-primary">WorkflowHub</h1>
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="gap-1">
+            <Button variant="outline" size="icon" className="rounded-full">
               <BellIcon className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-8 w-8 border border-primary/20">
                 <AvatarImage src="" alt={user.username} />
-                <AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary">
                   {user.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
           <PromptInput onSubmit={handlePromptSubmit} />
 
           <Tabs defaultValue="workflows" className="mt-8">
-            <TabsList className="mb-6">
+            <TabsList className="mb-6 bg-muted/50">
               <TabsTrigger value="workflows">Workflows</TabsTrigger>
               <TabsTrigger value="events">Events</TabsTrigger>
               <TabsTrigger value="templates">Message Templates</TabsTrigger>

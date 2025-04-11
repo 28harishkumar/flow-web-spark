@@ -20,10 +20,10 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit }) => {
 
   return (
     <div className="w-full max-w-3xl mx-auto mb-8">
-      <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 shadow-lg">
+      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 backdrop-blur-sm border border-primary/20 rounded-xl p-4 shadow-lg">
         <Textarea
           placeholder="Create a campaign or workflow..."
-          className="bg-transparent border-none resize-none text-white text-lg placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[100px]"
+          className="bg-transparent border-none resize-none text-foreground text-lg placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[100px]"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
@@ -37,7 +37,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit }) => {
         <div className="flex justify-end items-center mt-2 pt-2">
           <Button 
             size="sm" 
-            className="bg-gray-700 hover:bg-gray-600 rounded-full w-8 h-8 p-0"
+            className="bg-primary/80 hover:bg-primary text-primary-foreground rounded-full w-8 h-8 p-0"
             onClick={handleSubmit}
           >
             <ArrowUp className="w-4 h-4" />

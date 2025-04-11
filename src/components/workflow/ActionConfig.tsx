@@ -6,11 +6,12 @@ import {
   CanvasWorkflow,
   TemplateListType,
   WebAction,
+  WebEvent,
   WebMessage,
   Node,
 } from "@/types/workflow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Save, Settings, ChevronDown, Plus } from "lucide-react";
+import { Trash2, Edit2, Save, Settings } from "lucide-react";
 import TemplateConfig from "./TemplateConfig";
 import { WorkflowService } from "@/services/workflow";
 import {
@@ -30,14 +31,11 @@ import {
 import { createSlug } from "@/lib/utils";
 import { Editor } from "@monaco-editor/react";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "../ui/form";
-import { useForm } from "react-hook-form";
-import { Badge } from "../ui/badge";
-import { Calendar } from "lucide-react";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@radix-ui/react-accordion";
 
 interface ActionConfigProps {
   action: WebAction;
@@ -64,28 +62,7 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
   const [showWhenDialog, setShowWhenDialog] = useState(false);
   const [events, setEvents] = useState<string[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [filterEnabled, setFilterEnabled] = useState(true);
-  const [isWhoHaveDoneOpen, setIsWhoHaveDoneOpen] = useState(true);
-  const [isWhoHaveNotDoneOpen, setIsWhoHaveNotDoneOpen] = useState(true);
-
-  const segmentData = {
-    triggerEvent: "WalletAddBalanceClick",
-    haveDoneEvents: [
-      { name: "Charged", qualifier: "First Time", timeframe: "In the last 30 days" },
-    ],
-    haveNotDoneEvents: [
-      { id: "A", name: "user_deposit_success" },
-      { id: "B", name: "Charged" },
-    ],
-  };
-
-  const form = useForm({
-    defaultValues: {
-      segment: "",
-      triggerEvent: "WalletAddBalanceClick",
-      filterEnabled: true,
-    },
-  });
+  const [filterEnabled, setFilterEnabled] = useState(false);
 
   const workflowService = new WorkflowService();
 
@@ -93,6 +70,7 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
     workflowService.getTemplates().then((templates) => {
       setTemplates(templates);
     });
+    // Fetch events from API
     workflowService.getUserEvents(true).then((fetchedEvents) => {
       setEvents(fetchedEvents.map((event) => event.name));
     });
@@ -108,6 +86,7 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
     if (!selectedTemplate) return;
 
     if (!action.web_message) {
+      // Create new web message
       const newWebMessage: Partial<WebMessage> = {
         title: selectedTemplate.name,
         message: selectedTemplate.description,
@@ -135,6 +114,7 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
         console.error("Failed to add template:", error);
       }
     } else {
+      // Update existing web message
       action.web_message.template_name = selectedTemplate.name;
       try {
         await workflowService.updateWebMessage({
@@ -333,199 +313,65 @@ const ActionConfig: React.FC<ActionConfigProps> = ({
                 <Edit2 className="h-4 w-4" />
               </Button>
             </div>
-            
-            <div className="px-2 py-1 space-y-2 text-sm">
-              <p>When a user does</p>
-              <div className="ml-5 flex flex-wrap gap-1 mb-2">
-                <Badge variant="secondary" className="bg-rose-100 text-rose-900 hover:bg-rose-200">
-                  {segmentData.triggerEvent}
-                </Badge>
-              </div>
-              
-              <p>Filtered by</p>
-              
-              <div className="ml-5 mb-2">
-                <p className="italic text-slate-600">Users who have done</p>
-                <ul className="list-disc ml-8">
-                  {segmentData.haveDoneEvents.map((event, idx) => (
-                    <li key={idx} className="flex items-center gap-1 flex-wrap">
-                      <Badge variant="secondary" className="bg-rose-100 text-rose-900 hover:bg-rose-200">
-                        {event.name}
-                      </Badge>
-                      <span>{event.qualifier}</span>
-                      <span>{event.timeframe}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="ml-5">
-                <p className="italic text-slate-600">AND does not do</p>
-                <ul className="list-disc ml-8">
-                  {segmentData.haveNotDoneEvents.map((event, idx) => (
-                    <li key={idx}>
-                      <Badge variant="secondary" className="bg-rose-100 text-rose-900 hover:bg-rose-200">
-                        {event.name}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="ml-5">
-                <p className="italic text-slate-600">OR</p>
-                <ul className="list-disc ml-8">
-                  <li>
-                    <Badge variant="secondary" className="bg-rose-100 text-rose-900 hover:bg-rose-200">
-                      Charged
-                    </Badge>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
             <Dialog open={showWhoDialog} onOpenChange={setShowWhoDialog}>
-              <DialogContent className="max-w-xl">
+              <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Target Segment</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-medium text-purple-800">Target Segment</p>
-                    <div className="h-6 w-6 rounded-full bg-purple-300 flex items-center justify-center">
-                      <div className="h-3 w-3 rounded-full bg-purple-600"></div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg shadow p-4 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg">Find users from segment</p>
-                      <Button variant="outline" className="bg-blue-50 text-blue-700">
-                        Action: New segment
-                      </Button>
-                    </div>
-                    
-                    <Collapsible
-                      open={true}
-                      className="w-full border rounded-md"
-                    >
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left">
-                        <p className="font-medium">As soon as user does</p>
-                        <ChevronDown className="h-5 w-5" />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="p-4 pt-0 border-t">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="bg-blue-50 px-3 py-2 text-sm">
-                            WalletAddBalanceClick
-                          </Badge>
-                          <Button variant="ghost" size="sm">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Filter
-                          </Button>
+                  <Label>Select Event</Label>
+                  <Select
+                    value={selectedEvent || ""}
+                    onValueChange={setSelectedEvent}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pick an event" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event, index) => (
+                        <SelectItem key={index} value={event}>
+                          {event}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedEvent && (
+                    <div className="space-y-4">
+                      <p>{selectedEvent}</p>
+                      <Label className="flex items-center gap-2">
+                        <Input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={filterEnabled}
+                          onChange={(e) => setFilterEnabled(e.target.checked)}
+                        />
+                        Filter on past behavior and user properties
+                      </Label>
+                      {filterEnabled && (
+                        <div className="space-y-4">
+                          <div>
+                            <p>Who have done</p>
+                            <Button variant="ghost" size="sm">
+                              + Add an event...
+                            </Button>
+                          </div>
+                          <div>
+                            <p>Who have not done</p>
+                            <Button variant="ghost" size="sm">
+                              + Add an event...
+                            </Button>
+                          </div>
+                          <div>
+                            <p>With user properties</p>
+                            <Button variant="ghost" size="sm">
+                              + Add property...
+                            </Button>
+                          </div>
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                    
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="checkbox"
-                        className="h-5 w-5"
-                        checked={filterEnabled}
-                        onChange={(e) => setFilterEnabled(e.target.checked)}
-                      />
-                      <Label className="font-medium text-base">Filter on past behavior and user properties</Label>
+                      )}
                     </div>
-                    
-                    {filterEnabled && (
-                      <>
-                        <Collapsible
-                          open={isWhoHaveDoneOpen}
-                          onOpenChange={setIsWhoHaveDoneOpen}
-                          className="w-full border rounded-md"
-                        >
-                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left">
-                            <p className="font-medium">Who have done</p>
-                            <ChevronDown className="h-5 w-5" />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="p-4 pt-0 border-t">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Badge variant="outline" className="bg-slate-100 rounded-md py-2 px-3">
-                                AND
-                              </Badge>
-                              <Badge variant="outline" className="bg-white border rounded-md py-2 px-3">
-                                A
-                              </Badge>
-                              <Badge variant="secondary" className="bg-blue-50 px-3 py-2">
-                                Charged
-                              </Badge>
-                              <Badge variant="secondary" className="bg-blue-50 px-3 py-2">
-                                First Time
-                              </Badge>
-                              <Badge variant="secondary" className="bg-blue-50 px-3 py-2 flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                In the last 30 days
-                              </Badge>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="icon" variant="outline" className="h-8 w-8">
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                              <Button variant="outline" className="text-blue-500">
-                                Add an event...
-                              </Button>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                        
-                        <Collapsible
-                          open={isWhoHaveNotDoneOpen}
-                          onOpenChange={setIsWhoHaveNotDoneOpen}
-                          className="w-full border rounded-md"
-                        >
-                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="bg-slate-100 rounded-md py-2 px-3">
-                                AND
-                              </Badge>
-                              <p className="font-medium">Who have not done</p>
-                            </div>
-                            <ChevronDown className="h-5 w-5" />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="p-4 pt-0 border-t">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Badge variant="outline" className="bg-white border rounded-md py-2 px-3">
-                                A
-                              </Badge>
-                              <Badge variant="secondary" className="bg-blue-50 px-3 py-2">
-                                user_deposit_success
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <Badge variant="outline" className="bg-slate-100 rounded-md py-2 px-3">
-                                OR
-                              </Badge>
-                              <Badge variant="outline" className="bg-white border rounded-md py-2 px-3">
-                                B
-                              </Badge>
-                              <Badge variant="secondary" className="bg-blue-50 px-3 py-2">
-                                Charged
-                              </Badge>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="icon" variant="outline" className="h-8 w-8">
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                              <Button variant="outline" className="text-blue-500">
-                                Add an event...
-                              </Button>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </>
-                    )}
-                  </div>
-                  
-                  <Button className="w-full" onClick={() => setShowWhoDialog(false)}>Save</Button>
+                  )}
+                  <Button onClick={() => setShowWhoDialog(false)}>Save</Button>
                 </div>
               </DialogContent>
             </Dialog>

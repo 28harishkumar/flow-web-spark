@@ -129,6 +129,25 @@ export interface TargetSegment {
   filterConditions?: FilterConditions;
 }
 
+export interface DeliveryPreferences {
+  priority?: "low" | "medium" | "high" | "critical";
+  days?: number[];
+  startTime?: string;
+  endTime?: string;
+  frequency?: boolean;
+  exclude_from_limits?: boolean;
+  campaign_frequency_limits?: boolean;
+  max_delivery?: {
+    count: number;
+    timeUnit: string;
+    timeValue: number;
+  };
+  display_trigger?: {
+    type: string;
+    value: number;
+  };
+}
+
 export interface WebAction {
   id: string;
   action_type: string;
@@ -146,6 +165,7 @@ export interface WebAction {
   start_date?: string;
   end_date?: string;
   targetSegment?: TargetSegment;
+  delivery_preferences?: DeliveryPreferences;
 }
 
 export type EventCategory = "web" | "mobile";

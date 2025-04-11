@@ -1,29 +1,33 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import EventsView from "@/components/EventsView";
-import WorkflowsView from "@/components/WorkflowsView";
 import TemplatesView from "@/components/TemplatesView";
-import WorkflowEditor from "@/pages/WorkflowEditor";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, Search, BellIcon } from "lucide-react";
 import { WorkflowService } from "@/services/workflow";
-import { UserEventsService } from "@/services/userEvents";
-import { WebMessagingService } from "@/services/webMessaging";
 import { useAuth } from "@/context/AuthContext";
 import { JsonWorkflow } from "@/types/workflow";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { trackEvent } from "@/lib/tracking";
+import PromptInput from "@/components/PromptInput";
+import WorkflowTable from "@/components/WorkflowTable";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 const Dashboard: React.FC = () => {
   const { currentUser: user, logout: onLogout } = useAuth();
   const navigate = useNavigate();
-
+  const { toast } = useToast();
   const workflowService = new WorkflowService();
-  const navigateToEditor = (workflowId: string) => {
-    navigate(`/dashboard/workflows/${workflowId}`);
-  };
+  
+  const { data: workflows = [], isLoading, refetch } = useQuery({
+    queryKey: ["workflows"],
+    queryFn: () => workflowService.listWorkflows(),
+  });
 
   useEffect(() => {
     trackEvent("DashboardViewed", {
@@ -43,18 +47,45 @@ const Dashboard: React.FC = () => {
       updated_at: new Date().toISOString(),
     };
 
-    //navigateToEditor(newWorkflow.id.toString());
     workflowService.createWorkflow(newWorkflow).then((workflow) => {
-      navigateToEditor(workflow.id);
+      navigate(`/dashboard/workflows/${workflow.id}`);
     });
   };
 
+  const handlePromptSubmit = (prompt: string) => {
+    toast({
+      title: "Prompt submitted",
+      description: `Your prompt: "${prompt}" has been received.`,
+    });
+    // Here you would typically send the prompt to an LLM service
+  };
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="border-b py-4">
-        <div className="container flex justify-between items-center">
-          <h1 className="text-xl font-semibold">WorkflowHub</h1>
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <header className="border-b bg-white py-3 px-4 sticky top-0 z-10">
+        <div className="container flex justify-between items-center max-w-7xl mx-auto">
+          <div className="flex items-center gap-6">
+            <h1 className="text-xl font-semibold">WorkflowHub</h1>
+            <div className="relative max-w-md w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input 
+                type="search" 
+                placeholder="Search" 
+                className="pl-9 bg-gray-100 border-none" 
+              />
+            </div>
+          </div>
+
           <div className="flex items-center gap-4">
+            <Button variant="outline" className="gap-1">
+              <BellIcon className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="gap-1">
+              Subscribe to Reports
+            </Button>
+            <Button onClick={handleCreateWorkflow} className="gap-1">
+              <Plus className="h-4 w-4" /> Campaign
+            </Button>
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" alt={user.username} />
@@ -72,15 +103,14 @@ const Dashboard: React.FC = () => {
       </header>
 
       <main className="flex-1">
-        <div className="container py-6">
+        <div className="container mx-auto max-w-7xl py-8 px-4">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Dashboard</h2>
-            <Button onClick={handleCreateWorkflow}>
-              <Plus className="mr-2 h-4 w-4" /> New Workflow
-            </Button>
           </div>
 
-          <Tabs defaultValue="workflows">
+          <PromptInput onSubmit={handlePromptSubmit} />
+
+          <Tabs defaultValue="workflows" className="mt-8">
             <TabsList className="mb-6">
               <TabsTrigger value="workflows">Workflows</TabsTrigger>
               <TabsTrigger value="events">Events</TabsTrigger>
@@ -88,7 +118,7 @@ const Dashboard: React.FC = () => {
             </TabsList>
 
             <TabsContent value="workflows">
-              <WorkflowsView />
+              <WorkflowTable workflows={workflows} isLoading={isLoading} />
             </TabsContent>
 
             <TabsContent value="events">
